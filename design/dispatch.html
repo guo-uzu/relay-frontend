@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relay · Design B · Dispatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/components.css">
+<style>
+/* ---- tokens: fog blue, ultramarine, one colour per action ---- */
+:root {
+  --bg: #E7ECF2; --panel: #FFFFFF; --panel-2: #F3F6FA; --field: #FFFFFF;
+  --ink: #0F1B2D; --ink-soft: #56667B; --ink-faint: #8C9AAD;
+  --line: #E0E6EE; --line-strong: #C9D2DE; --hover: #EEF2F7; --row-line: #EDF1F6;
+  --accent: #3340F2; --accent-ink: #FFFFFF; --accent-wash: #E4E7FF; --focus: #3340F2;
+  --mark-bg: #FFE08A; --mark-ink: #0F1B2D; --flash: #E4E7FF;
+  --ok: #0F9D74; --warn: #C97C06; --bad: #D6455D; --info: #1696C8;
+  --a-added: #0F9D74; --a-edited: #E39A12; --a-deleted: #D6455D; --a-imported: #7B5CF0; --a-connected: #1696C8;
+  --radius: 20px; --radius-sm: 11px; --control-h: 40px; --cell-py: 13px; --cell-px: 18px; --fs: 15px; --fs-table: 14.5px;
+  --font: 'Hanken Grotesk', system-ui, sans-serif; --font-display: 'Bricolage Grotesque', 'Hanken Grotesk', sans-serif;
+  --ease: cubic-bezier(.23, 1, .32, 1); --dur-m: 240ms; --dialog-from: translateY(12px) scale(.97);
+  --shadow-pop: 0 24px 60px rgb(15 27 45 / .22); --scrim: rgb(15 27 45 / .38);
+  --chip-bg: var(--accent-wash); --chip-ink: #2330C9; --h2: 700 22px/1.2 var(--font-display); --h2-ls: -.01em;
+}
+.rl-tablewrap { border: 0; box-shadow: 0 1px 0 var(--line), 0 12px 32px -18px rgb(15 27 45 / .25); }
+.rl-table thead th { font-size: 13px; color: var(--ink-soft); font-weight: 600; border-bottom: 1px solid var(--line); }
+.rl-th { font-size: 13px; }
+.rl-search { border-radius: 14px; border-color: var(--line-strong); background: var(--panel); }
+.rl-btn { border-radius: 12px; }
+.rl-seg { border-radius: 12px; border-color: transparent; background: #DCE3EC; }
+.rl-seg button { border-radius: 9px; }
+.rl-seg button[aria-pressed=true] { box-shadow: 0 1px 3px rgb(15 27 45 / .18); }
+.rl-pill { padding: 2px 11px; }
+.rl-mark { padding: 1px 2px; border-radius: 4px; }
+.rl-toast { border-radius: 14px; padding: 13px 18px; }
+.rl-dialog { border-radius: 24px; border: 0; }
+.rl-filters { border-radius: 16px; background: var(--panel); border-color: var(--line); }
+.rl-pager { padding: 0 6px; }
+
+/* ---- shell ---- */
+.app { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100dvh; }
+.side { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 22px; padding: 22px 16px; background: var(--panel); border-right: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; font: 700 21px/1 var(--font-display); letter-spacing: -.02em; }
+.brand .logo { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--accent); color: #fff; }
+.orgcard { padding: 12px 14px; border-radius: 14px; background: var(--panel-2); }
+.orgcard b { display: block; font-weight: 600; }
+.orgcard span { color: var(--ink-soft); font-size: 13px; }
+.nav { display: grid; gap: 4px; }
+.nav a { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; border-radius: 12px; color: var(--ink-soft); text-decoration: none; font-weight: 500; transition: background-color 160ms var(--ease), color 160ms var(--ease), transform 140ms var(--ease); }
+.nav a:active { transform: scale(.98); }
+.nav a[aria-current=page] { background: var(--accent-wash); color: #2330C9; font-weight: 600; }
+@media (hover: hover) { .nav a:not([aria-current]):hover { background: var(--hover); color: var(--ink); } }
+.side .foot { margin-top: auto; display: grid; gap: 14px; }
+.seatbar { height: 6px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.seatbar i { display: block; height: 100%; border-radius: 6px; background: var(--accent); }
+.seatnote { font-size: 13px; color: var(--ink-soft); display: grid; gap: 6px; padding: 0 4px; }
+.meuser { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+.meuser small { display: block; color: var(--ink-soft); font-size: 12.5px; }
+.avatar { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--c, var(--accent)) 16%, white); color: color-mix(in srgb, var(--c, var(--accent)) 80%, #0F1B2D); font-weight: 700; font-size: 12px; }
+.avatar.sm { width: 28px; height: 28px; font-size: 10.5px; }
+.signout { display: flex; align-items: center; gap: 10px; padding: 8px 4px; color: var(--ink-soft); text-decoration: none; font-weight: 500; }
+.main { padding: 36px 44px 56px; max-width: 1280px; width: 100%; }
+.page-h { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
+.page-h h1 { font: 700 clamp(30px, 3.4vw, 44px)/1.05 var(--font-display); letter-spacing: -.03em; max-width: 18ch; }
+.page-h p { color: var(--ink-soft); margin-top: 8px; }
+.live { display: grid; gap: 7px; min-width: 190px; font-size: 13px; color: var(--ink-soft); }
+.live span { display: flex; align-items: center; gap: 9px; }
+.live .dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.live .dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--ok); animation: ping 2.2s ease-out infinite; }
+@keyframes ping { to { transform: scale(2.8); opacity: 0; } }
+.poll { height: 3px; border-radius: 3px; background: var(--line-strong); overflow: hidden; }
+.poll i { display: block; height: 100%; background: var(--accent); transform-origin: left; animation: poll 30s linear infinite; }
+@keyframes poll { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* proportional breakdown instead of a big-number card */
+.split { display: flex; height: 14px; gap: 3px; margin: 4px 0 12px; }
+.split i { flex: var(--n) 1 0; min-width: 6px; border-radius: 7px; background: var(--c); }
+.split-legend { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 14px; color: var(--ink-soft); }
+.split-legend b { color: var(--ink); font-weight: 700; margin-right: 5px; }
+.split-legend span::before { content: ''; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--c); margin-right: 8px; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px 36px; margin: 22px 0 28px; padding-top: 18px; border-top: 1px solid var(--line-strong); }
+.stats div { display: flex; align-items: baseline; gap: 8px; }
+.stats dt { color: var(--ink-soft); font-size: 14px; order: 2; } .stats dd { margin: 0; font: 700 22px/1 var(--font-display); }
+.stats { margin-bottom: 28px; } .stats dl { display: contents; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 24px; align-items: start; }
+.panel { background: var(--panel); border-radius: var(--radius); padding: 22px 22px 18px; box-shadow: 0 1px 0 var(--line), 0 12px 32px -18px rgb(15 27 45 / .25); }
+.panel + .panel { margin-top: 20px; }
+.panel > h2 { font: 700 19px/1.2 var(--font-display); letter-spacing: -.01em; }
+.panel > .hint { color: var(--ink-soft); font-size: 13.5px; margin: 3px 0 14px; }
+.panel.feed { padding-bottom: 8px; }
+
+/* timeline */
+.tl { list-style: none; margin: 0; padding: 0; position: relative; }
+.tl::before { content: ''; position: absolute; left: 11px; top: 14px; bottom: 14px; width: 2px; background: var(--line); border-radius: 2px; }
+.tl-item { display: grid; grid-template-rows: 1fr; }
+.tl-item > div { min-height: 0; overflow: hidden; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 14px; padding: 11px 0; }
+.tl-item + .tl-item > div { border-top: 1px solid var(--row-line); }
+.node { position: relative; width: 12px; height: 12px; margin: 7px 0 0 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 5px var(--panel); }
+.tl-item.is-new { transition: grid-template-rows 360ms var(--ease), opacity 360ms var(--ease); }
+@starting-style { .tl-item.is-new { grid-template-rows: 0fr; opacity: 0; } }
+.tl-item.is-new .node::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--c); animation: ping 1.4s ease-out 2; }
+.tl .line1 { font-size: 15px; }
+.tl .line1 b { font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 13.5px; }
+.vchip { padding: 1px 10px; border-radius: 8px; background: var(--panel-2); max-width: 36ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vchip.old { color: var(--ink-faint); text-decoration: line-through; }
+.vchip.new { background: color-mix(in srgb, var(--c) 14%, white); color: color-mix(in srgb, var(--c) 70%, #0F1B2D); font-weight: 600; }
+.vchip.del { background: color-mix(in srgb, var(--a-deleted) 12%, white); color: var(--a-deleted); text-decoration: line-through; }
+.when { text-align: right; color: var(--ink-soft); font-size: 13px; white-space: nowrap; }
+.when span { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; color: var(--ink-faint); }
+
+/* side panels */
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 150px; }
+.bar { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 2px 2px; overflow: hidden; }
+.bar i { display: block; width: 100%; background: var(--c); }
+.bar:last-child { outline: 2px solid var(--ink); outline-offset: 2px; }
+.axis { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12.5px; color: var(--ink-faint); }
+.who { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.who .nm { flex: 1; min-width: 0; } .who small { display: block; color: var(--ink-soft); font-size: 12.5px; }
+.who .count { font: 700 17px var(--font-display); }
+.sheetrow { display: flex; align-items: center; gap: 12px; padding: 11px 0; }
+.sheetrow + .sheetrow { border-top: 1px solid var(--row-line); }
+.sheetrow .sd { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.sheetrow .nm { flex: 1; min-width: 0; } .sheetrow .nm b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheetrow small { color: var(--ink-soft); font-size: 12.5px; }
+.icobtn { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 11px; border: 0; background: var(--panel-2); color: var(--ink-soft); transition: transform 140ms var(--ease), background-color 140ms var(--ease), color 140ms var(--ease); }
+.icobtn:active { transform: scale(.94); }
+@media (hover: hover) { .icobtn:hover { background: var(--accent-wash); color: var(--accent); } }
+
+/* first-load orchestration (once per visit) */
+.first .rise { animation: rise 520ms var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+
+/* team / data */
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+.person { display: flex; align-items: center; gap: 14px; padding: 12px 0; }
+.person + .person { border-top: 1px solid var(--row-line); }
+.person .nm { flex: 1; min-width: 0; } .person small { display: block; color: var(--ink-soft); }
+.you { margin-left: 6px; padding: 1px 8px; border-radius: 8px; background: var(--accent-wash); color: #2330C9; font-size: 12px; font-weight: 600; }
+.form { display: grid; gap: 14px; }
+.form label { display: grid; gap: 6px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); }
+.form .rl-field-input, .form .rl-select { width: 100%; }
+
+/* login */
+.lg { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(380px, .95fr); min-height: 100dvh; }
+.lg-hero { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; padding: 44px 56px; background: var(--accent); color: #fff; overflow: hidden; }
+.lg-hero .brand .logo { background: #fff; color: var(--accent); }
+.lg-hero h1 { font: 700 clamp(38px, 4.6vw, 64px)/1 var(--font-display); letter-spacing: -.035em; max-width: 12ch; }
+.lg-hero p { margin-top: 18px; max-width: 38ch; font-size: 17px; opacity: .88; }
+.stream { display: grid; gap: 10px; max-width: 460px; }
+.stream div { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-radius: 16px; background: rgb(255 255 255 / .14); font-size: 14.5px; }
+.stream div:nth-child(2) { margin-left: 28px; } .stream div:nth-child(3) { margin-left: 56px; }
+.stream i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; box-shadow: 0 0 0 3px rgb(255 255 255 / .25); }
+.lg-form { display: grid; align-content: center; justify-items: center; padding: 40px; background: var(--panel); position: relative; }
+.lg-form form { display: grid; gap: 16px; width: min(380px, 100%); }
+.lg-form h2 { font: 700 30px/1.1 var(--font-display); letter-spacing: -.02em; }
+.lg-form label { display: grid; gap: 6px; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
+.lg-form .rl-field-input { width: 100%; height: 46px; }
+.lg-form .rl-btn { height: 48px; justify-content: center; font-weight: 600; }
+.lg-form .langpos { position: absolute; top: 24px; right: 28px; }
+.switch { color: var(--ink-soft); font-size: 14px; } .switch a { color: #2330C9; font-weight: 600; }
+
+/* screen change: quick cross-fade with a touch of blur */
+::view-transition-old(root) { animation: vt-out 140ms ease-out both; }
+::view-transition-new(root) { animation: vt-in 240ms var(--ease) both; }
+@keyframes vt-out { to { opacity: 0; filter: blur(3px); } }
+@keyframes vt-in { from { opacity: 0; filter: blur(3px); } }
+
+@media (max-width: 1000px) { .app { grid-template-columns: 1fr; } .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; } .side .foot, .orgcard { display: none; } .nav { display: flex; } .cols, .grid2, .lg { grid-template-columns: 1fr; } .main { padding: 24px 18px; } .lg-hero { padding: 28px; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="shared/mock.js"></script>
+<script>
+const { t, esc, data, icon } = RL;
+const app = document.getElementById('app');
+let screen = 'dashboard', newId = null, firstDash = true;
+const color = (a) => `var(--a-${a})`;
+const hue = (s) => ['#3340F2', '#0F9D74', '#7B5CF0', '#E39A12', '#D6455D'][[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % 5];
+const avatar = (email, cls = '') => `<span class="avatar ${cls}" style="--c:${hue(email)}">${RL.initials(email)}</span>`;
+const nm = (email) => email.split('@')[0].replace('.', ' ');
+
+function shell(body) {
+  const used = data.members.length + data.invitations.length;
+  const link = (id, ic, label) => `<a href="#/${id}" ${screen === id ? 'aria-current="page"' : ''}>${icon(ic, 19)}${esc(label)}</a>`;
+  return `<div class="app ${firstDash && screen === 'dashboard' ? 'first' : ''}"><aside class="side">
+    <div class="brand"><span class="logo">${icon('bolt', 18)}</span>Relay</div>
+    <div class="orgcard"><b>${esc(data.org.name)}</b><span>Free</span></div>
+    <nav class="nav" aria-label="Main">${link('dashboard', 'dashboard', t('nav.dashboard'))}${link('data', 'table', t('nav.data'))}${link('team', 'users', t('nav.team'))}</nav>
+    <div class="foot">
+      <div class="seatnote"><div class="seatbar" aria-hidden="true"><i style="width:${(used / data.org.seatsMax) * 100}%"></i></div>${esc(t('dash.seats', { used, max: data.org.seatsMax }))}</div>
+      ${RL.langToggle()}
+      <div class="meuser">${avatar(data.me.email)}<div><b>${esc(data.me.name)}</b><small>${esc(t('team.owner'))}</small></div></div>
+      <a class="signout" href="#/login">${icon('logout', 18)}${esc(t('nav.signOut'))}</a>
+    </div></aside><main class="main" id="main">${body}</main></div>`;
+}
+
+function eventItem(ev) {
+  const d = RL.describe(ev), c = color(ev.action);
+  let chips = '';
+  if (ev.action === 'edited') chips = `<span class="vchip old">${esc(ev.old || '—')}</span><span aria-hidden="true">→</span><span class="vchip new" style="--c:${c}">${esc(ev.new)}</span>`;
+  else if (ev.action === 'added') chips = `<span class="vchip new" style="--c:${c}">${esc(ev.new)}</span>`;
+  else if (ev.action === 'deleted') chips = `<span class="vchip del">${esc(ev.old)}</span>`;
+  return `<li class="tl-item ${ev.id === newId ? 'is-new' : ''}"><div>
+    <span class="node" style="--c:${c}" title="${esc(t('act.' + ev.action))}"></span>
+    <div><div class="line1"><b>${esc(nm(ev.actor))}</b> ${esc(d.text)}</div>${chips ? `<div class="chips">${chips}</div>` : ''}</div>
+    <div class="when"><time datetime="${ev.at}" title="${esc(RL.clock(ev.at))}">${esc(RL.rel(ev.at))}</time><br><span>${icon(ev.source === 'sheet' ? 'table' : 'bolt', 13)}${esc(t('source.' + ev.source))}</span></div></div></li>`;
+}
+
+function chart() {
+  const s = data.series, max = Math.max(...s.map(RL.total));
+  return `<div class="bars" role="img" aria-label="${esc(t('dash.activity'))}">${s.map((d) => `<div class="bar" title="${esc(d.date)}: ${RL.total(d)}">${RL.ACTIONS.map((a) => `<i style="--c:${color(a)};height:${(d[a] / max) * 100}%"></i>`).join('')}</div>`).join('')}</div>
+  <div class="axis"><span>${esc(RL.dayLabel(s[0].date + 'T12:00:00'))}</span><span>${esc(t('dash.today'))}</span></div>`;
+}
+
+function dashboard() {
+  const td = data.series[data.series.length - 1], tot = RL.total(td);
+  const week = data.series.slice(-7).reduce((a, d) => a + RL.total(d), 0);
+  const totalRows = data.sheets.reduce((a, s) => a + s.rowCount, 0);
+  const R = (i) => `class="rise" style="--i:${i}"`;
+  return `<header class="page-h rise" style="--i:0"><div><h1>${esc(t('dash.summary', { n: tot }))}</h1><p>${esc(t('dash.tz', { tz: data.tz }))}</p></div>
+      <div class="live"><span><i class="dot"></i>${esc(t('dash.checking'))}</span><div class="poll" aria-hidden="true"><i></i></div></div></header>
+    <section ${R(1)} aria-label="${esc(t('dash.today'))}"><div class="split" role="img" aria-label="${esc(t('dash.summary', { n: tot }))}">${RL.ACTIONS.filter((a) => td[a]).map((a) => `<i style="--n:${td[a]};--c:${color(a)}"></i>`).join('')}</div>
+      <div class="split-legend">${RL.ACTIONS.filter((a) => td[a]).map((a) => `<span style="--c:${color(a)}"><b>${td[a]}</b>${esc(t('act.' + a))}</span>`).join('')}</div>
+      <dl class="stats"><div><dd>${data.sheets.length}</dd><dt>${esc(t('dash.sheets'))}</dt></div><div><dd>${RL.num(totalRows)}</dd><dt>${esc(t('dash.rows'))}</dt></div><div><dd>${week}</dd><dt>${esc(t('dash.week'))}</dt></div><div><dd>${data.members.length}</dd><dt>${esc(t('dash.members'))}</dt></div></dl></section>
+    <div class="cols">
+      <section class="panel feed rise" style="--i:2"><h2>${esc(t('dash.recent'))}</h2><p class="hint">${esc(t('dash.recentHint'))}</p><ul class="tl">${RL.recent().map(eventItem).join('')}</ul></section>
+      <div>
+        <section class="panel rise" style="--i:3"><h2>${esc(t('dash.activity'))}</h2><div style="height:14px"></div>${chart()}</section>
+        <section class="panel rise" style="--i:4"><h2>${esc(t('dash.actors'))}</h2><div style="height:6px"></div>${data.actors.map((a) => `<div class="who">${avatar(a.email)}<div class="nm"><b>${esc(nm(a.email))}</b></div><span class="count">${a.count}</span></div>`).join('')}</section>
+        <section class="panel rise" style="--i:5"><h2>${esc(t('dash.freshness'))}</h2><div style="height:6px"></div>${data.sheets.map((s) => {
+          const age = s.importedAt ? (Date.now() - new Date(s.importedAt)) / 864e5 : null;
+          const [label, c] = age === null ? [t('dash.never'), 'var(--ink-faint)'] : age > 7 ? [t('dash.stale'), 'var(--warn)'] : [t('dash.fresh'), 'var(--ok)'];
+          return `<div class="sheetrow"><i class="sd" style="--c:${c}"></i><div class="nm"><b>${esc(s.name)}</b><small>${esc(label)}${s.importedAt ? ', ' + esc(RL.rel(s.importedAt)) : ''}</small></div><button class="icobtn" data-import="${s.id}" aria-label="${esc(age === null ? t('dash.import') : t('dash.reimport'))}: ${esc(s.name)}">${icon('refresh', 17)}</button></div>`;
+        }).join('')}</section>
+      </div></div>`;
+}
+
+function team() {
+  const roles = ['owner', 'admin', 'member'];
+  return `<header class="page-h"><div><h1>${esc(t('team.title'))}</h1><p>${esc(t('team.subtitle'))}</p></div></header>
+  <div class="grid2"><div>
+    <section class="panel"><h2>${esc(t('team.members'))}</h2><div style="height:6px"></div>${data.members.map((m) => `<div class="person">${avatar(m.email)}<div class="nm"><b>${esc(m.name)}</b>${m.email === data.me.email ? `<span class="you">${esc(t('team.you'))}</span>` : ''}<small>${esc(m.email)}</small></div>
+      <select class="rl-select" aria-label="${esc(t('team.role'))}: ${esc(m.name)}" ${m.role === 'owner' ? 'disabled' : ''}>${roles.map((r) => `<option ${r === m.role ? 'selected' : ''}>${esc(t('team.' + r))}</option>`).join('')}</select>
+      ${m.role === 'owner' ? '' : `<button class="icobtn" data-toast="${esc(t('team.remove'))}" aria-label="${esc(t('team.remove'))}: ${esc(m.name)}">${icon('x', 17)}</button>`}</div>`).join('')}</section>
+    <section class="panel"><h2>${esc(t('team.pending'))}</h2><div style="height:6px"></div>${data.invitations.map((i) => `<div class="person"><span class="avatar" style="--c:#8C9AAD">${icon('mail', 16)}</span><div class="nm"><b>${esc(i.email)}</b><small>${esc(t('team.' + i.role))}, ${esc(t('team.expires', { t: RL.rel(i.expiresAt) }))}</small></div><button class="rl-btn" data-toast="${esc(t('team.cancel'))}">${esc(t('team.cancel'))}</button></div>`).join('')}</section></div>
+    <section class="panel"><h2>${esc(t('team.invite'))}</h2><form class="form" data-invite style="margin-top:16px"><label>${esc(t('team.email'))}<input class="rl-field-input" type="email" name="email" required placeholder="name@company.com"></label>
+      <label>${esc(t('team.role'))}<select class="rl-select"><option>${esc(t('team.member'))}</option><option>${esc(t('team.admin'))}</option></select></label>
+      <button class="rl-btn rl-btn-primary" type="submit" style="justify-content:center">${esc(t('team.send'))}</button></form></section></div>`;
+}
+
+function login() {
+  const lines = [['edited', 'ana', 'Estado: pendiente → pagado'], ['added', 'marta', 'Hotel Mirador, Aceite vegetal 20 L'], ['edited', 'luis m', 'Cantidad: 10 → 12']];
+  return `<div class="lg"><section class="lg-hero"><div class="brand"><span class="logo">${icon('bolt', 18)}</span>Relay</div>
+    <div><h1>${esc(t('auth.headline'))}</h1><p>${esc(t('auth.sub'))}</p></div>
+    <div class="stream" aria-hidden="true">${lines.map(([a, who, x]) => `<div><i style="--c:${color(a)}"></i><span><b>${who}</b> ${esc(x)}</span></div>`).join('')}</div></section>
+    <section class="lg-form"><div class="langpos">${RL.langToggle()}</div>
+    <form data-login><h2>${esc(t('auth.signIn'))}</h2>
+      <label>${esc(t('auth.email'))}<input class="rl-field-input" type="email" value="alex@distnorte.mx" autocomplete="username"></label>
+      <label>${esc(t('auth.password'))}<input class="rl-field-input" type="password" value="••••••••••" autocomplete="current-password"></label>
+      <button class="rl-btn rl-btn-primary" type="submit">${esc(t('auth.signIn'))}</button>
+      <p class="switch">${esc(t('auth.noAccount'))} <a href="#/login">${esc(t('auth.signUp'))}</a></p></form></section></div>`;
+}
+
+function render(s) {
+  screen = s;
+  if (s === 'login') { app.innerHTML = login(); return; }
+  if (s === 'data') {
+    app.innerHTML = shell(`<header class="page-h"><div><h1>${esc(data.sheetName)}</h1><p>${esc(t('sheets.rowsN', { n: RL.num(data.rows.length) }))}, ${esc(t('sheets.importedAgo', { t: RL.rel(data.sheets[0].importedAt) }).toLowerCase())}</p></div></header><div id="table"></div>`);
+    RL.mountTable(document.getElementById('table')); return;
+  }
+  if (s === 'team') { app.innerHTML = shell(team()); return; }
+  screen = 'dashboard'; app.innerHTML = shell(dashboard()); firstDash = false;
+}
+
+app.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (e.target.matches('[data-login]')) { const b = e.target.querySelector('button[type=submit]'); b.disabled = true; b.style.opacity = .7; setTimeout(() => (location.hash = '#/dashboard'), 350); }
+  if (e.target.matches('[data-invite]')) { RL.toast(e.target.elements.email.value); e.target.reset(); }
+});
+app.addEventListener('click', (e) => {
+  const imp = e.target.closest('[data-import]'); if (imp) { const s = data.sheets.find((x) => x.id === imp.dataset.import); s.importedAt = new Date().toISOString(); if (!s.rowCount) s.rowCount = 64; RL.pushEvent({ source: 'platform', action: 'imported', actor: data.me.email, sheetName: s.name, n: s.rowCount }); RL.toast(s.name); }
+  const tt = e.target.closest('[data-toast]'); if (tt) RL.toast(tt.dataset.toast);
+});
+RL.on('event', (ev) => { if (screen !== 'dashboard') return; newId = ev.id; const y = scrollY; render('dashboard'); document.querySelector('.app').classList.remove('first'); document.querySelectorAll('.rise').forEach((n) => (n.style.animation = 'none')); scrollTo(0, y); setTimeout(() => (newId = null), 2500); });
+RL.simulateLive(9000);
+RL.router(render, 'dashboard');
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relay · Design options</title>
+<style>
+  :root { color-scheme: light; --ink: #1b1d22; --soft: #5f6672; --line: #d9dce2; --bg: #f5f6f8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 48px 24px 80px; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -.02em; }
+  .lead { color: var(--soft); max-width: 66ch; margin: 0 0 40px; }
+  .opt { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; padding: 32px 0; border-top: 1px solid var(--line); align-items: start; }
+  .opt h2 { font-size: 24px; margin: 0; letter-spacing: -.01em; }
+  .opt .tag { color: var(--soft); margin: 4px 0 14px; }
+  .shot { display: block; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+  .shot img { display: block; width: 100%; height: auto; }
+  .thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .sw { display: flex; gap: 6px; margin: 14px 0; } .sw i { width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgb(0 0 0 / .12); background: var(--c); }
+  dl { margin: 0; display: grid; grid-template-columns: 7.5em 1fr; gap: 6px 14px; font-size: 14.5px; } dt { color: var(--soft); } dd { margin: 0; }
+  .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .links a { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--ink); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 14px; }
+  .links a:first-child { background: var(--ink); color: #fff; }
+  .links a:hover { background: #e9ebef; } .links a:first-child:hover { background: #343944; }
+  .note { margin-top: 40px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--soft); font-size: 14.5px; }
+  .note b { color: var(--ink); }
+  @media (max-width: 860px) { .opt { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Relay frontend: three design options</h1>
+  <p class="lead">Static prototypes that share the same mock data and behaviour: login, dashboard, data table with AND/OR search, highlight, filters and Add row, and the team page. They run in English and Spanish (toggle in each). A new event arrives on the dashboard every 9 seconds to show the polling effect. Open them in a browser, no build needed.</p>
+
+  <section class="opt">
+    <div><a class="shot" href="ledger.html#/dashboard"><img src="previews/ledger-dashboard.png" alt="Ledger dashboard"></a>
+      <div class="thumbs"><a class="shot" href="ledger.html#/data"><img src="previews/ledger-data.png" alt="Ledger data table"></a><a class="shot" href="ledger.html#/login"><img src="previews/ledger-login.png" alt="Ledger login"></a></div></div>
+    <div><h2>A. Ledger</h2><p class="tag">The product looks like the thing your team already uses: a spreadsheet.</p>
+      <div class="sw" aria-label="Palette"><i style="--c:#EDF0EA"></i><i style="--c:#FFFFFF"></i><i style="--c:#18241C"></i><i style="--c:#1E6B46"></i><i style="--c:#FFE45E"></i></div>
+      <dl><dt>Type</dt><dd>Schibsted Grotesk</dd><dt>Shape</dt><dd>Square-ish, 1px grid lines, dense</dd><dt>Layout</dt><dd>Formula bar summarises today. Sheet tabs along the bottom are the navigation. The dashboard feed is a real grid with sheet row numbers.</dd><dt>Motion</dt><dd>Minimal and quick (120 to 160 ms). New events flash like an edited cell. Fade dialog.</dd><dt>Best for</dt><dd>Power users who scan a lot of rows. Fewest surprises.</dd><dt>Trade-off</dt><dd>Least friendly look for non-technical members. Bottom tabs are unusual on the web.</dd></dl>
+      <div class="links"><a href="ledger.html#/dashboard">Open</a><a href="ledger.html#/data">Data</a><a href="ledger.html#/team">Team</a><a href="ledger.html#/login">Login</a></div></div>
+  </section>
+
+  <section class="opt">
+    <div><a class="shot" href="dispatch.html#/dashboard"><img src="previews/dispatch-dashboard.png" alt="Dispatch dashboard"></a>
+      <div class="thumbs"><a class="shot" href="dispatch.html#/data"><img src="previews/dispatch-data.png" alt="Dispatch data table"></a><a class="shot" href="dispatch.html#/login"><img src="previews/dispatch-login.png" alt="Dispatch login"></a></div></div>
+    <div><h2>B. Dispatch</h2><p class="tag">Relay as a live feed: the story of what just changed comes first.</p>
+      <div class="sw" aria-label="Palette"><i style="--c:#E7ECF2"></i><i style="--c:#FFFFFF"></i><i style="--c:#0F1B2D"></i><i style="--c:#3340F2"></i><i style="--c:#0F9D74"></i><i style="--c:#E39A12"></i></div>
+      <dl><dt>Type</dt><dd>Bricolage Grotesque + Hanken Grotesk</dd><dt>Shape</dt><dd>Soft, large radii on panels, smaller on controls</dd><dt>Layout</dt><dd>Left sidebar. The headline is today's count with a proportional bar. A timeline is the main column.</dd><dt>Motion</dt><dd>New events slide into the timeline. A progress line counts down to the next poll. Page changes cross-fade with a hint of blur. One staggered entrance on first load.</dd><dt>Best for</dt><dd>A mixed team where most people look, a few edit. Friendliest.</dd><dt>Trade-off</dt><dd>Takes more vertical space. The timeline holds less per screen than a table.</dd></dl>
+      <div class="links"><a href="dispatch.html#/dashboard">Open</a><a href="dispatch.html#/data">Data</a><a href="dispatch.html#/team">Team</a><a href="dispatch.html#/login">Login</a></div></div>
+  </section>
+
+  <section class="opt">
+    <div><a class="shot" href="observatory.html#/dashboard"><img src="previews/observatory-dashboard.png" alt="Observatory dashboard"></a>
+      <div class="thumbs"><a class="shot" href="observatory.html#/data"><img src="previews/observatory-data.png" alt="Observatory data table"></a><a class="shot" href="observatory.html#/login"><img src="previews/observatory-login.png" alt="Observatory login"></a></div></div>
+    <div><h2>C. Observatory</h2><p class="tag">Activity over time is the hero: the 30-day chart comes first, the feed second.</p>
+      <div class="sw" aria-label="Palette"><i style="--c:#15111C"></i><i style="--c:#1F1929"></i><i style="--c:#ECE7F5"></i><i style="--c:#B79CFF"></i><i style="--c:#5EE0B0"></i><i style="--c:#FFB86B"></i></div>
+      <dl><dt>Type</dt><dd>Sora + Figtree</dd><dt>Shape</dt><dd>Rounded, quiet panels, pill navigation</dd><dt>Layout</dt><dd>Top bar with centered tabs. A tall stacked chart; legend buttons turn each action on or off. Hover a bar for the breakdown.</dd><dt>Motion</dt><dd>Bars grow once on first load. Add row opens as a side drawer. Toasts drop from the top.</dd><dt>Best for</dt><dd>Admins who want to see activity patterns. Works well on large screens and at night.</dd><dt>Trade-off</dt><dd>Dark only (a light theme needs extra work). Chart-first means the feed sits below the fold.</dd></dl>
+      <div class="links"><a href="observatory.html#/dashboard">Open</a><a href="observatory.html#/data">Data</a><a href="observatory.html#/team">Team</a><a href="observatory.html#/login">Login</a></div></div>
+  </section>
+
+  <div class="note"><b>These are visual studies, not the app.</b> In the real project the same screens use shadcn/ui and Tailwind, with TanStack Router, Query, Table and Form. Search, AND/OR and filters run in the backend; here a small script stands in for it. You can also mix them: for example Dispatch's feed with Ledger's data table.</div>
+</main>
+</body>
+</html>

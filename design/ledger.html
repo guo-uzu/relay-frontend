@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relay · Design A · Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/components.css">
+<style>
+/* ---- tokens: paper, grid green, find-yellow ---- */
+:root {
+  --bg: #EDF0EA; --panel: #FFFFFF; --panel-2: #F4F7F2; --field: #FFFFFF;
+  --ink: #18241C; --ink-soft: #56655B; --ink-faint: #8A978E;
+  --line: #DCE3D8; --line-strong: #BCC8B8; --hover: #E9EFE6;
+  --accent: #1E6B46; --accent-ink: #FFFFFF; --accent-wash: #DCEFE2; --focus: #1E6B46;
+  --mark-bg: #FFE45E; --mark-ink: #18241C; --flash: #FFF0A0;
+  --ok: #1E7A4A; --warn: #A8690A; --bad: #B3342B; --info: #1F62A8;
+  --a-added: #1E7A4A; --a-edited: #C28A12; --a-deleted: #B3342B; --a-imported: #5B4BB5; --a-connected: #1F62A8;
+  --radius: 4px; --radius-sm: 3px; --control-h: 32px; --cell-py: 6px; --cell-px: 12px; --fs: 14px; --fs-table: 13.5px;
+  --font: 'Schibsted Grotesk', system-ui, sans-serif;
+  --ease: cubic-bezier(.23, 1, .32, 1); --dur-m: 140ms; --dialog-from: scale(.98);
+  --shadow-pop: 0 10px 30px rgb(24 36 28 / .18);
+}
+/* spreadsheet grid on the data table: vertical lines + column letters + gray row-number gutter */
+.rl-table th, .rl-table td { border-right: 1px solid var(--line); }
+.rl-table th:last-child, .rl-table td:last-child { border-right: 0; }
+.rl-table td.rl-rn, .rl-table th.rl-rn { background: var(--panel-2); color: var(--ink-soft); min-width: 44px; }
+.rl-table thead tr { counter-reset: col; }
+.rl-table thead th:not(.rl-rn) { counter-increment: col; }
+.rl-th::before { content: counter(col, upper-alpha); min-width: 14px; color: var(--ink-faint); font-size: 11px; font-weight: 600; }
+.rl-tablewrap { border-radius: 0; }
+.rl-pill { border-radius: 3px; padding: 0 7px; }
+.rl-chip { border-radius: 3px; }
+.rl-dialog { border-radius: 6px; }
+.rl-toast { border-radius: 3px; }
+#rl-toasts { bottom: 52px; }
+
+/* ---- shell ---- */
+.shell { display: grid; grid-template-rows: auto auto 1fr auto; height: 100dvh; }
+.top { display: flex; align-items: center; gap: 16px; height: 44px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--line-strong); }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.01em; font-size: 16px; }
+.brand svg { color: var(--accent); }
+.org { color: var(--ink-soft); padding-left: 16px; border-left: 1px solid var(--line-strong); }
+.grow { flex: 1; }
+.me { display: flex; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 13px; }
+.avatar { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 3px; background: var(--accent-wash); color: var(--accent); font-weight: 700; font-size: 10.5px; }
+.formula { display: flex; align-items: stretch; height: 34px; background: var(--panel); border-bottom: 1px solid var(--line-strong); font-size: 13.5px; }
+.namebox { display: flex; align-items: center; min-width: 150px; max-width: 260px; padding: 0 14px; border-right: 1px solid var(--line-strong); font-weight: 600; background: var(--panel-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx { display: flex; align-items: center; gap: 14px; flex: 1; padding: 0 14px; overflow: hidden; white-space: nowrap; }
+.fx .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; background: var(--c); }
+.fx .meta { margin-left: auto; color: var(--ink-faint); display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
+.sheet { overflow: auto; padding: 16px; }
+.tabs { display: flex; align-items: flex-end; gap: 0; height: 38px; padding: 0 8px; background: var(--panel-2); border-top: 1px solid var(--line-strong); }
+.tabs a { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 18px; color: var(--ink-soft); text-decoration: none; font-weight: 500; border: 1px solid transparent; border-top: 0; margin-top: -1px; transition: background-color 120ms var(--ease), color 120ms var(--ease); }
+.tabs a[aria-current=page] { background: var(--panel); color: var(--accent); font-weight: 600; border-color: var(--line-strong); box-shadow: inset 0 -3px 0 var(--accent); }
+@media (hover: hover) { .tabs a:not([aria-current]):hover { background: var(--hover); color: var(--ink); } }
+.tabs .out { margin-left: auto; align-self: center; }
+
+/* ---- dashboard grid ---- */
+.dash { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; max-width: 1280px; margin: 0 auto; }
+.cell { background: var(--panel); border: 1px solid var(--line-strong); }
+.cell + .cell { margin-top: 16px; }
+.cell > h2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 12px; background: var(--panel-2); border-bottom: 1px solid var(--line-strong); font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+.cell > h2 span { font-weight: 400; color: var(--ink-faint); }
+.cell .body { padding: 12px; }
+.who { display: inline-flex; align-items: center; gap: 8px; }
+.act { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.act::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--c); }
+.chg del { color: var(--ink-faint); text-decoration-thickness: 1px; }
+.chg .col { color: var(--ink-soft); margin-right: 6px; }
+.chg .arrow { color: var(--ink-faint); margin: 0 5px; }
+.src { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-soft); }
+tr[data-new] td { animation: rl-flash 1800ms ease-out, ledger-in 160ms var(--ease); }
+@keyframes ledger-in { from { opacity: 0; } }
+.bars { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
+.bar { flex: 1; display: flex; flex-direction: column-reverse; height: 100%; justify-content: flex-start; }
+.bar i { display: block; width: 100%; background: var(--c); min-height: 0; }
+.bar:last-child { outline: 1.5px solid var(--ink); outline-offset: 2px; }
+.axis { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--ink-faint); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 10px; font-size: 12.5px; color: var(--ink-soft); }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--c); margin-right: 5px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.list li:last-child { border-bottom: 0; }
+.list .sub { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--ink-soft); font-size: 12.5px; }
+.meter { height: 6px; background: var(--panel-2); border: 1px solid var(--line); }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.tag { padding: 0 7px; border-radius: 3px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--c) 14%, transparent); color: color-mix(in srgb, var(--c) 80%, var(--ink)); }
+.seats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.seats i { height: 24px; border: 1px solid var(--line-strong); background: var(--panel-2); }
+.seats i[data-on] { background: var(--accent-wash); border-color: var(--accent); }
+.mini { height: 28px; padding: 0 10px; font-size: 13px; white-space: nowrap; flex: none; }
+
+/* ---- team ---- */
+.team { max-width: 980px; margin: 0 auto; display: grid; gap: 16px; }
+.team .rl-tablewrap { border: 0; }
+.invite { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; padding: 12px; border-top: 1px solid var(--line-strong); background: var(--panel-2); }
+.invite label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 500; color: var(--ink-soft); }
+.note { color: var(--ink-soft); font-size: 13px; }
+.data { max-width: 1280px; margin: 0 auto; }
+
+/* ---- login ---- */
+.login { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background-color: var(--bg); background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px; }
+.login-card { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); width: min(960px, 100%); background: var(--panel); border: 1px solid var(--line-strong); box-shadow: 8px 8px 0 var(--line-strong); }
+.login-form { display: grid; gap: 16px; padding: 32px; align-content: start; }
+.login-form h1 { font-size: 27px; line-height: 1.12; letter-spacing: -.02em; font-weight: 700; max-width: 14ch; }
+.login-form p.sub { color: var(--ink-soft); max-width: 36ch; }
+.login-form label { display: grid; gap: 5px; font-weight: 500; font-size: 13px; color: var(--ink-soft); }
+.login-form .rl-field-input { width: 100%; height: 38px; }
+.login-form .rl-btn { height: 40px; justify-content: center; }
+.switch { font-size: 13.5px; color: var(--ink-soft); }
+.switch a { color: var(--accent); font-weight: 600; }
+.login-top { display: flex; justify-content: space-between; align-items: center; }
+.preview { background: var(--panel-2); border-left: 1px solid var(--line-strong); padding: 32px; display: grid; align-content: center; gap: 12px; overflow: hidden; }
+.preview .rl-tablewrap { box-shadow: 0 6px 20px rgb(24 36 28 / .08); }
+.preview .q { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-soft); }
+@media (max-width: 900px) { .dash { grid-template-columns: 1fr; } .login-card { grid-template-columns: 1fr; } .preview { display: none; } .org { display: none; } .me span.nm { display: none; } .fx .meta { display: none; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="shared/mock.js"></script>
+<script>
+const { t, esc, data, icon } = RL;
+const app = document.getElementById('app');
+let screen = 'dashboard', newId = null;
+
+const color = (a) => `var(--a-${a})`;
+const user = (email) => `<span class="who"><span class="avatar">${RL.initials(email)}</span>${esc(email.split('@')[0])}</span>`;
+
+function shell(body, namebox, fx) {
+  return `<div class="shell">
+    <header class="top">
+      <div class="brand">${gridMark()}Relay</div><div class="org">${esc(data.org.name)}</div><div class="grow"></div>
+      ${RL.langToggle()}
+      <div class="me"><span class="avatar">${RL.initials(data.me.email)}</span><span class="nm">${esc(data.me.name)}</span></div>
+    </header>
+    <div class="formula"><div class="namebox" title="${esc(namebox)}">${esc(namebox)}</div><div class="fx">${fx}</div></div>
+    <main class="sheet" id="main">${body}</main>
+    <nav class="tabs" aria-label="Main">
+      ${tab('dashboard', t('nav.dashboard'))}${tab('data', data.sheetName)}${tab('team', t('nav.team'))}
+      <a class="out" href="#/login">${icon('logout', 16)}${esc(t('nav.signOut'))}</a>
+    </nav></div>`;
+}
+const tab = (id, label) => `<a href="#/${id}" ${screen === id ? 'aria-current="page"' : ''}>${esc(label)}</a>`;
+const gridMark = () => `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="2"/><path d="M2 8h16M8 2v16"/></svg>`;
+
+function today() { return data.series[data.series.length - 1]; }
+
+function eventsTable() {
+  const rows = RL.recent().map((ev) => {
+    const d = RL.describe(ev), c = color(ev.action);
+    let change;
+    if (ev.action === 'edited') change = `<span class="col">${esc(ev.column)}</span><del>${esc(ev.old || '—')}</del><span class="arrow">→</span><strong>${esc(ev.new)}</strong>`;
+    else if (ev.action === 'added') change = esc(ev.new || '');
+    else if (ev.action === 'deleted') change = `<del>${esc(ev.old || '')}</del>`;
+    else change = esc(d.text);
+    return `<tr ${ev.id === newId ? 'data-new' : ''}>
+      <td class="rl-rn">${ev.row ?? ''}</td><td>${user(ev.actor)}</td>
+      <td><span class="act" style="--c:${c}">${esc(t('act.' + ev.action))}</span></td>
+      <td class="chg">${change}</td>
+      <td title="${esc(RL.clock(ev.at))}">${esc(RL.rel(ev.at))}</td>
+      <td><span class="src">${icon(ev.source === 'sheet' ? 'table' : 'bolt', 14)}${esc(t('source.' + ev.source))}</span></td></tr>`;
+  }).join('');
+  return `<div class="rl-tablewrap" style="border:0"><table class="rl-table"><thead><tr><th class="rl-rn">${esc(t('dash.col.row'))}</th>
+    ${['who', 'action', 'change', 'when', 'source'].map((k) => `<th scope="col" style="padding:var(--cell-py) var(--cell-px)">${esc(t('dash.col.' + k))}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function chart() {
+  const s = data.series, max = Math.max(...s.map(RL.total));
+  const bars = s.map((d) => `<div class="bar" title="${esc(d.date)}: ${RL.total(d)}">${RL.ACTIONS.map((a) => `<i style="--c:${color(a)};height:${(d[a] / max) * 100}%"></i>`).join('')}</div>`).join('');
+  return `<div class="bars" role="img" aria-label="${esc(t('dash.activity'))}">${bars}</div>
+    <div class="axis"><span>${esc(RL.dayLabel(s[0].date + 'T12:00:00'))}</span><span>${esc(t('dash.today'))}</span></div>
+    <div class="legend">${RL.ACTIONS.map((a) => `<span><i style="--c:${color(a)}"></i>${esc(t('act.' + a))}</span>`).join('')}</div>`;
+}
+
+function dashboard() {
+  const td = today(), max = data.actors[0].count;
+  const used = data.members.length + data.invitations.length;
+  return `<div class="dash">
+    <section class="cell" aria-labelledby="h-recent"><h2 id="h-recent">${esc(t('dash.recent'))}<span>${esc(t('dash.recentHint'))}</span></h2>${eventsTable()}</section>
+    <div>
+      <section class="cell" aria-labelledby="h-act"><h2 id="h-act">${esc(t('dash.activity'))}</h2><div class="body">${chart()}</div></section>
+      <section class="cell" aria-labelledby="h-actors"><h2 id="h-actors">${esc(t('dash.actors'))}</h2><ul class="list">
+        ${data.actors.map((a) => `<li><span class="who"><span class="avatar">${RL.initials(a.email)}</span>${esc(a.email.split('@')[0])}</span><b>${a.count}</b><div class="sub meter" style="padding:0"><i style="width:${(a.count / max) * 100}%"></i></div></li>`).join('')}</ul></section>
+      <section class="cell" aria-labelledby="h-fresh"><h2 id="h-fresh">${esc(t('dash.freshness'))}</h2><ul class="list">
+        ${data.sheets.map((s) => {
+          const age = s.importedAt ? (Date.now() - new Date(s.importedAt)) / 864e5 : null;
+          const [label, c] = age === null ? [t('dash.never'), 'var(--ink-faint)'] : age > 7 ? [t('dash.stale'), 'var(--warn)'] : [t('dash.fresh'), 'var(--ok)'];
+          return `<li><b>${esc(s.name)}</b><span class="tag" style="--c:${c}">${esc(label)}</span><div class="sub"><span>${esc(t('sheets.rowsN', { n: RL.num(s.rowCount) }))}${s.importedAt ? ' · ' + esc(t('sheets.importedAgo', { t: RL.rel(s.importedAt) })) : ''}</span>
+            <button class="rl-btn mini" data-import="${s.id}">${icon('refresh', 14)}${esc(age === null ? t('dash.import') : t('dash.reimport'))}</button></div></li>`;
+        }).join('')}</ul></section>
+      <section class="cell" aria-labelledby="h-seats"><h2 id="h-seats">${esc(t('dash.members'))}</h2><div class="body">
+        <div class="seats" aria-hidden="true">${Array.from({ length: data.org.seatsMax }, (_, i) => `<i ${i < used ? 'data-on' : ''}></i>`).join('')}</div>
+        <p class="note" style="margin-top:8px">${esc(t('dash.seats', { used, max: data.org.seatsMax }))}</p></div></section>
+    </div></div>`;
+}
+
+function fxToday() {
+  const td = today();
+  return `<span>${t('dash.summary', { n: '<b>' + RL.total(td) + '</b>' })}</span>` +
+    RL.ACTIONS.filter((a) => td[a]).map((a) => `<span><i class="sw" style="--c:${color(a)}"></i>${td[a]} ${esc(t('act.' + a))}</span>`).join('') +
+    `<span class="meta">${icon('refresh', 14)}${esc(t('dash.checking'))} · ${esc(data.tz)}</span>`;
+}
+
+function team() {
+  const roles = ['owner', 'admin', 'member'];
+  return `<div class="team">
+    <section class="cell"><h2>${esc(t('team.members'))}<span>${esc(t('team.subtitle'))}</span></h2>
+      <div class="rl-tablewrap"><table class="rl-table"><thead><tr>${['auth.name', 'team.email', 'team.role', ''].map((k) => `<th scope="col" style="padding:var(--cell-py) var(--cell-px)">${k ? esc(t(k)) : ''}</th>`).join('')}</tr></thead><tbody>
+      ${data.members.map((m) => `<tr><td>${user(m.email).replace(esc(m.email.split('@')[0]), esc(m.name))}${m.email === data.me.email ? ` <span class="tag" style="--c:var(--accent)">${esc(t('team.you'))}</span>` : ''}</td><td>${esc(m.email)}</td>
+        <td><select class="rl-select" aria-label="${esc(t('team.role'))}" ${m.role === 'owner' ? 'disabled' : ''}>${roles.map((r) => `<option ${r === m.role ? 'selected' : ''}>${esc(t('team.' + r))}</option>`).join('')}</select></td>
+        <td>${m.role === 'owner' ? '' : `<button class="rl-btn mini" data-toast="${esc(t('team.remove'))}">${esc(t('team.remove'))}</button>`}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="cell"><h2>${esc(t('team.pending'))}</h2>
+      <div class="rl-tablewrap"><table class="rl-table"><tbody>${data.invitations.map((i) => `<tr><td>${icon('mail', 15)} ${esc(i.email)}</td><td>${esc(t('team.' + i.role))}</td><td class="rl-date">${esc(t('team.expires', { t: RL.rel(i.expiresAt) }))}</td><td><button class="rl-btn mini" data-toast="${esc(t('team.cancel'))}">${esc(t('team.cancel'))}</button></td></tr>`).join('')}</tbody></table></div>
+      <form class="invite" data-invite><label>${esc(t('team.email'))}<input class="rl-field-input" type="email" name="email" required placeholder="name@company.com"></label>
+        <label>${esc(t('team.role'))}<select class="rl-select"><option>${esc(t('team.member'))}</option><option>${esc(t('team.admin'))}</option></select></label>
+        <button class="rl-btn rl-btn-primary" type="submit">${icon('mail', 16)}${esc(t('team.send'))}</button></form></section></div>`;
+}
+
+function login() {
+  const T = ['cafe'];
+  const rows = data.rows.filter((r) => r.some((c) => RL.fold(c).includes('cafe'))).slice(0, 4);
+  return `<div class="login"><div class="login-card">
+    <form class="login-form" data-login>
+      <div class="login-top"><div class="brand">${gridMark()}Relay</div>${RL.langToggle()}</div>
+      <h1>${esc(t('auth.headline'))}</h1><p class="sub">${esc(t('auth.sub'))}</p>
+      <label>${esc(t('auth.email'))}<input class="rl-field-input" type="email" value="alex@distnorte.mx" autocomplete="username"></label>
+      <label>${esc(t('auth.password'))}<input class="rl-field-input" type="password" value="••••••••••" autocomplete="current-password"></label>
+      <button class="rl-btn rl-btn-primary" type="submit">${esc(t('auth.signIn'))}</button>
+      <p class="switch">${esc(t('auth.noAccount'))} <a href="#/login">${esc(t('auth.signUp'))}</a></p>
+    </form>
+    <div class="preview" aria-hidden="true"><div class="q"><span class="rl-chip">cafe</span></div>
+      <div class="rl-tablewrap"><table class="rl-table"><thead><tr><th class="rl-rn">#</th><th style="padding:var(--cell-py) var(--cell-px)">Cliente</th><th style="padding:var(--cell-py) var(--cell-px)">Producto</th><th style="padding:var(--cell-py) var(--cell-px)">Estado</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr><td class="rl-rn">${data.rows.indexOf(r) + 2}</td><td>${RL.highlight(r[0], T)}</td><td>${RL.highlight(r[1], T)}</td><td><span class="rl-pill" data-v="${r[3]}">${r[3]}</span></td></tr>`).join('')}</tbody></table></div></div>
+  </div></div>`;
+}
+
+function render(s) {
+  screen = s;
+  if (s === 'login') app.innerHTML = login();
+  else if (s === 'data') { app.innerHTML = shell('<div class="data" id="table"></div>', data.sheetName, `<span>${esc(t('sheets.rowsN', { n: RL.num(data.rows.length) }))}</span><span class="meta">${esc(t('sheets.importedAgo', { t: RL.rel(data.sheets[0].importedAt) }))}</span>`); RL.mountTable(document.getElementById('table')); }
+  else if (s === 'team') app.innerHTML = shell(team(), t('nav.team'), `<span>${esc(t('dash.seats', { used: data.members.length + data.invitations.length, max: data.org.seatsMax }))}</span>`);
+  else { screen = 'dashboard'; app.innerHTML = shell(dashboard(), t('dash.today'), fxToday()); }
+}
+
+app.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (e.target.matches('[data-login]')) { const b = e.target.querySelector('button[type=submit]'); b.disabled = true; setTimeout(() => (location.hash = '#/dashboard'), 350); }
+  if (e.target.matches('[data-invite]')) { RL.toast(e.target.elements.email.value); e.target.reset(); }
+});
+app.addEventListener('click', (e) => {
+  const imp = e.target.closest('[data-import]'); if (imp) { const s = data.sheets.find((x) => x.id === imp.dataset.import); s.importedAt = new Date().toISOString(); if (!s.rowCount) s.rowCount = 64; RL.pushEvent({ source: 'platform', action: 'imported', actor: data.me.email, sheetName: s.name, n: s.rowCount }); RL.toast(s.name); }
+  const tt = e.target.closest('[data-toast]'); if (tt) RL.toast(tt.dataset.toast);
+});
+RL.on('event', (ev) => { if (screen !== 'dashboard') return; newId = ev.id; render('dashboard'); setTimeout(() => (newId = null), 2000); });
+RL.simulateLive(9000);
+RL.router(render, 'dashboard');
+</script>
+</body>
+</html>

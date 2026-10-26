@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relay · Design C · Observatory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/components.css">
+<style>
+/* ---- tokens: plum night, five data colours, lilac for actions ---- */
+:root {
+  color-scheme: dark;
+  --bg: #15111C; --panel: #1F1929; --panel-2: #272033; --field: #1A1523;
+  --ink: #ECE7F5; --ink-soft: #A79DBF; --ink-faint: #7D7396;
+  --line: #322A43; --line-strong: #463C5B; --hover: #2B2339; --row-line: #2A2338;
+  --accent: #B79CFF; --accent-ink: #1A1030; --accent-wash: rgb(183 156 255 / .16); --focus: #CDBBFF;
+  --mark-bg: rgb(255 184 107 / .3); --mark-ink: #FFD9AE; --flash: rgb(183 156 255 / .28);
+  --ok: #5EE0B0; --warn: #FFB86B; --bad: #FF7A90; --info: #6CC7F2;
+  --a-added: #5EE0B0; --a-edited: #FFB86B; --a-deleted: #FF7A90; --a-imported: #B79CFF; --a-connected: #6CC7F2;
+  --radius: 16px; --radius-sm: 10px; --control-h: 38px; --cell-py: 11px; --cell-px: 16px; --fs: 15px; --fs-table: 14px;
+  --font: 'Figtree', system-ui, sans-serif; --font-display: 'Sora', 'Figtree', sans-serif;
+  --ease: cubic-bezier(.23, 1, .32, 1); --ease-dialog: cubic-bezier(.32, .72, 0, 1); --dur-m: 300ms;
+  --shadow-pop: -24px 0 70px rgb(0 0 0 / .5); --scrim: rgb(8 5 14 / .6);
+  --toast-bg: #ECE7F5; --toast-ink: #15111C; --chip-bg: var(--accent-wash); --chip-ink: #D9CCFF;
+  --seg-bg: #19141F; --seg-on: #34294A; --seg-shadow: none; --h2: 600 20px/1.2 var(--font-display);
+}
+.rl-tablewrap { background: var(--panel); border-color: var(--line); }
+.rl-table thead th { color: var(--ink-soft); font-size: 13px; background: var(--panel-2); }
+.rl-th { font-size: 13px; color: var(--ink-soft); } .rl-table [aria-sort] .rl-th { color: var(--ink); }
+.rl-pill { background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); }
+.rl-btn { background: var(--panel-2); border-color: var(--line-strong); }
+.rl-btn-primary { background: var(--accent); border-color: var(--accent); }
+.rl-seg button[aria-pressed=true] { color: var(--ink); }
+.rl-search { background: var(--field); }
+.rl-dialog--drawer { background: var(--panel); border-left: 1px solid var(--line-strong); }
+.rl-dialog::backdrop { backdrop-filter: blur(2px); }
+.rl-fields { grid-template-columns: 1fr; } .rl-fields label:nth-child(n) { grid-column: auto; }
+#rl-toasts { right: 50%; top: 20px; bottom: auto; transform: translateX(50%); justify-items: center; }
+.rl-toast { border-radius: 99px; @starting-style { transform: translateY(-14px); } }
+
+/* ---- shell ---- */
+.top { position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; height: 64px; padding: 0 28px; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 19px var(--font-display); letter-spacing: -.02em; }
+.brand svg { color: var(--accent); }
+.brand small { font: 500 13.5px var(--font); color: var(--ink-faint); letter-spacing: 0; padding-left: 10px; border-left: 1px solid var(--line-strong); }
+.tabs { display: flex; gap: 2px; padding: 4px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); }
+.tabs a { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 18px; border-radius: 99px; color: var(--ink-soft); text-decoration: none; font-weight: 500; transition: background-color 160ms var(--ease), color 160ms var(--ease), transform 140ms var(--ease); }
+.tabs a:active { transform: scale(.97); }
+.tabs a[aria-current=page] { background: #34294A; color: var(--ink); }
+@media (hover: hover) { .tabs a:not([aria-current]):hover { color: var(--ink); background: var(--hover); } }
+.right { display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.avatar { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--c, var(--accent)) 20%, var(--panel)); color: var(--c, var(--accent)); font-weight: 700; font-size: 12px; }
+.avatar.sm { width: 28px; height: 28px; font-size: 10.5px; }
+.iconlink { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: var(--ink-soft); }
+@media (hover: hover) { .iconlink:hover { background: var(--hover); color: var(--ink); } }
+.page { max-width: 1240px; margin: 0 auto; padding: 32px 28px 64px; }
+.page-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 22px; }
+.page-h h1 { font: 600 clamp(26px, 3vw, 34px)/1.1 var(--font-display); letter-spacing: -.02em; }
+.page-h p { color: var(--ink-soft); margin-top: 6px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-soft); font-size: 13.5px; }
+
+/* ---- chart hero ---- */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+.card > h2 { font: 600 17px/1.2 var(--font-display); letter-spacing: -.01em; }
+.card > .hint { color: var(--ink-soft); font-size: 13.5px; margin: 4px 0 14px; }
+.hero-h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.hero-h h1 { font: 600 clamp(30px, 3.6vw, 42px)/1.05 var(--font-display); letter-spacing: -.03em; }
+.hero-h p { color: var(--ink-soft); margin-top: 8px; font-size: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; align-content: start; }
+.legend button { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 99px; background: transparent; border: 1px solid var(--line-strong); color: var(--ink); font-size: 13.5px; font-weight: 500; transition: opacity 160ms var(--ease), transform 140ms var(--ease), background-color 160ms var(--ease); }
+.legend button:active { transform: scale(.96); }
+.legend button::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.legend button[aria-pressed=false] { opacity: .45; } .legend button[aria-pressed=false]::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--c); }
+.legend b { color: var(--ink-soft); font-weight: 600; }
+.plot { position: relative; height: 260px; margin-top: 4px; }
+.grid { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--line); }
+.grid span { position: absolute; top: -9px; left: 0; font-size: 11.5px; color: var(--ink-faint); background: var(--panel); padding-right: 6px; }
+.bars { position: absolute; inset: 0 0 0 34px; display: flex; gap: 6px; }
+.bar { flex: 1; height: 100%; display: flex; align-items: flex-end; min-width: 0; outline-offset: 2px; }
+.stack { width: 100%; display: flex; flex-direction: column-reverse; border-radius: 7px 7px 3px 3px; overflow: hidden; opacity: .72; transform-origin: bottom; transition: opacity 140ms var(--ease), filter 140ms var(--ease); }
+.stack i { display: block; background: var(--c); min-height: 0; }
+.bar.today .stack { opacity: 1; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+@media (hover: hover) { .bar:hover .stack { opacity: 1; } }
+.bar:focus-visible .stack { opacity: 1; }
+.first .stack { animation: grow 560ms var(--ease) both; animation-delay: calc(var(--i) * 16ms); }
+@keyframes grow { from { transform: scaleY(.03); opacity: 0; } }
+.tip { position: absolute; z-index: 3; bottom: calc(100% + 8px); left: 0; min-width: 160px; padding: 10px 12px; border-radius: 12px; background: #34294A; border: 1px solid var(--line-strong); box-shadow: 0 10px 30px rgb(0 0 0 / .4); font-size: 13px; pointer-events: none; opacity: 0; transform: translateX(-50%); transition: opacity 120ms var(--ease); }
+.tip[data-on] { opacity: 1; }
+.tip b { display: block; margin-bottom: 6px; font-weight: 600; }
+.tip div { display: flex; justify-content: space-between; gap: 18px; color: var(--ink-soft); }
+.tip div::before { content: ''; align-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: -10px; }
+.tip div span:first-child { padding-left: 4px; }
+.xaxis { display: flex; justify-content: space-between; margin: 10px 0 0 34px; font-size: 12.5px; color: var(--ink-faint); }
+.numbers { display: flex; flex-wrap: wrap; gap: 8px 40px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 14px; }
+.numbers b { font: 600 20px var(--font-display); color: var(--ink); margin-right: 8px; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; margin-top: 20px; align-items: start; }
+.stackcol { display: grid; gap: 20px; }
+
+/* feed */
+.feed { list-style: none; margin: 0; padding: 0; }
+.ev { display: grid; grid-template-rows: 1fr; }
+.ev > div { min-height: 0; overflow: hidden; display: grid; grid-template-columns: 3px minmax(0, 1fr) auto; gap: 14px; padding: 12px 0; }
+.ev + .ev > div { border-top: 1px solid var(--row-line); }
+.ev.is-new { transition: grid-template-rows 380ms var(--ease-dialog), opacity 380ms var(--ease-dialog); background: linear-gradient(90deg, var(--accent-wash), transparent 70%); border-radius: 10px; }
+@starting-style { .ev.is-new { grid-template-rows: 0fr; opacity: 0; } }
+.ev .bar3 { border-radius: 3px; background: var(--c); }
+.ev .l1 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.ev .tag { padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+.ev .l2 { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13.5px; color: var(--ink-soft); }
+.ev .old { text-decoration: line-through; color: var(--ink-faint); } .ev .new { color: var(--c); font-weight: 600; } .ev .del { color: var(--bad); text-decoration: line-through; }
+.ev .tm { text-align: right; font-size: 13px; color: var(--ink-soft); white-space: nowrap; } .ev .tm small { display: flex; justify-content: flex-end; align-items: center; gap: 5px; color: var(--ink-faint); margin-top: 3px; }
+
+/* side cards */
+.row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 0; }
+.row .track { grid-column: 2 / -1; height: 6px; border-radius: 6px; background: var(--panel-2); overflow: hidden; margin-top: -2px; }
+.row .track i { display: block; height: 100%; border-radius: 6px; background: var(--c, var(--accent)); }
+.row .n { font: 600 16px var(--font-display); }
+.row small { display: block; color: var(--ink-soft); font-size: 12.5px; }
+.sheet { padding: 12px 0; } .sheet + .sheet { border-top: 1px solid var(--row-line); }
+.sheet .top2 { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.sheet b { font-weight: 600; } .sheet small { color: var(--ink-soft); }
+.sheet .age { height: 6px; border-radius: 6px; background: var(--panel-2); margin: 9px 0 0; overflow: hidden; }
+.sheet .age i { display: block; height: 100%; border-radius: 6px; background: var(--c); }
+.ibtn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 99px; border: 1px solid var(--line-strong); background: transparent; font-size: 13px; font-weight: 500; transition: transform 140ms var(--ease), background-color 140ms var(--ease); white-space: nowrap; }
+.ibtn:active { transform: scale(.96); } @media (hover: hover) { .ibtn:hover { background: var(--hover); } }
+.dots { display: flex; gap: 8px; } .dots i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line-strong); } .dots i[data-on] { background: var(--accent); border-color: var(--accent); }
+
+/* team / data / login */
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.person { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 14px; align-items: center; padding: 12px 0; }
+.person + .person { border-top: 1px solid var(--row-line); }
+.person small { display: block; color: var(--ink-soft); }
+.you { margin-left: 8px; padding: 1px 8px; border-radius: 99px; background: var(--accent-wash); color: var(--accent); font-size: 12px; font-weight: 600; }
+.form { display: grid; gap: 14px; margin-top: 16px; } .form label { display: grid; gap: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink-soft); } .form .rl-field-input, .form .rl-select { width: 100%; }
+.lg { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(360px, .9fr); gap: 56px; align-items: center; max-width: 1180px; margin: 0 auto; padding: 40px 28px; }
+.lg h1 { font: 600 clamp(36px, 4.4vw, 58px)/1.02 var(--font-display); letter-spacing: -.035em; max-width: 13ch; margin-top: 56px; }
+.lg .sub { color: var(--ink-soft); margin: 18px 0 32px; max-width: 40ch; font-size: 17px; }
+.lg .demo { max-width: 520px; display: grid; gap: 10px; } .lg .demo .rl-chip { justify-self: start; }
+.lg-card { padding: 30px; border-radius: 24px; background: var(--panel); border: 1px solid var(--line); display: grid; gap: 16px; }
+.lg-card h2 { font: 600 24px var(--font-display); letter-spacing: -.02em; }
+.lg-card label { display: grid; gap: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink-soft); } .lg-card .rl-field-input { width: 100%; height: 44px; }
+.lg-card .rl-btn { height: 46px; justify-content: center; font-weight: 600; } .lg-card .sw { color: var(--ink-soft); font-size: 14px; } .lg-card .sw a { color: var(--accent); font-weight: 600; }
+.lg-top { display: flex; justify-content: space-between; align-items: center; }
+
+::view-transition-old(root) { animation: vt-out 120ms ease-out both; }
+::view-transition-new(root) { animation: vt-in 220ms var(--ease) both; }
+@keyframes vt-out { to { opacity: 0; } } @keyframes vt-in { from { opacity: 0; transform: translateY(6px); } }
+@media (max-width: 980px) { .cols, .grid2, .lg { grid-template-columns: 1fr; } .top { grid-template-columns: auto 1fr; } .tabs { order: 3; grid-column: 1 / -1; justify-self: center; } .top { height: auto; padding: 12px 18px; } .page { padding: 20px 16px; } .brand small { display: none; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="shared/mock.js"></script>
+<script>
+const { t, esc, data, icon } = RL;
+const app = document.getElementById('app');
+let screen = 'dashboard', newId = null, firstDash = true; const hidden = new Set();
+const color = (a) => `var(--a-${a})`;
+const hue = (s) => ['#B79CFF', '#5EE0B0', '#FFB86B', '#6CC7F2', '#FF7A90'][[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % 5];
+const avatar = (email, cls = '') => `<span class="avatar ${cls}" style="--c:${hue(email)}">${RL.initials(email)}</span>`;
+const nm = (email) => email.split('@')[0].replace('.', ' ');
+
+function shell(body) {
+  const link = (id, ic, label) => `<a href="#/${id}" ${screen === id ? 'aria-current="page"' : ''}>${icon(ic, 17)}${esc(label)}</a>`;
+  return `<header class="top"><div class="brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-7M22 20H2"/></svg>Relay<small>${esc(data.org.name)}</small></div>
+    <nav class="tabs" aria-label="Main">${link('dashboard', 'dashboard', t('nav.dashboard'))}${link('data', 'table', t('nav.data'))}${link('team', 'users', t('nav.team'))}</nav>
+    <div class="right">${RL.langToggle()}${avatar(data.me.email)}<a class="iconlink" href="#/login" aria-label="${esc(t('nav.signOut'))}" title="${esc(t('nav.signOut'))}">${icon('logout', 19)}</a></div></header>
+    <main class="page ${firstDash && screen === 'dashboard' ? 'first' : ''}" id="main">${body}</main>`;
+}
+
+function niceMax() { const m = Math.max(...data.series.map((d) => RL.ACTIONS.filter((a) => !hidden.has(a)).reduce((s, a) => s + d[a], 0)), 1); return Math.ceil(m / 10) * 10; }
+function chart() {
+  const s = data.series, vis = RL.ACTIONS.filter((a) => !hidden.has(a)), max = niceMax();
+  return `<div class="plot" id="plot">${[0, 1, 2].map((i) => `<div class="grid" style="bottom:${i * 50}%"><span>${(max * i) / 2}</span></div>`).join('')}
+    <div class="bars" role="group" aria-label="${esc(t('dash.activity'))}">${s.map((d, i) => { const tot = vis.reduce((x, a) => x + d[a], 0); return `<div class="bar ${i === s.length - 1 ? 'today' : ''}" tabindex="0" data-i="${i}" aria-label="${esc(d.date)}: ${tot}"><div class="stack" style="--i:${i};height:${(tot / max) * 100}%">${vis.map((a) => `<i style="--c:${color(a)};flex:${d[a]}"></i>`).join('')}</div></div>`; }).join('')}</div>
+    <div class="tip" id="tip" role="presentation"></div></div>
+    <div class="xaxis"><span>${esc(RL.dayLabel(s[0].date + 'T12:00:00'))}</span><span>${esc(t('dash.today'))}</span></div>`;
+}
+
+function eventItem(ev) {
+  const d = RL.describe(ev), c = color(ev.action); let l2 = '';
+  if (ev.action === 'edited') l2 = `<span class="old">${esc(ev.old || '—')}</span><span aria-hidden="true">→</span><span class="new">${esc(ev.new)}</span>`;
+  else if (ev.action === 'added') l2 = `<span class="new">${esc(ev.new)}</span>`;
+  else if (ev.action === 'deleted') l2 = `<span class="del">${esc(ev.old)}</span>`;
+  return `<li class="ev ${ev.id === newId ? 'is-new' : ''}" style="--c:${c}"><div><span class="bar3"></span>
+    <div><div class="l1"><span class="tag">${esc(t('act.' + ev.action))}</span><span><b>${esc(nm(ev.actor))}</b> ${esc(d.text)}</span></div>${l2 ? `<div class="l2">${l2}</div>` : ''}</div>
+    <div class="tm"><time datetime="${ev.at}" title="${esc(RL.clock(ev.at))}">${esc(RL.rel(ev.at))}</time><small>${icon(ev.source === 'sheet' ? 'table' : 'bolt', 13)}${esc(t('source.' + ev.source))}</small></div></div></li>`;
+}
+
+function dashboard() {
+  const td = data.series[data.series.length - 1], tot = RL.total(td), week = data.series.slice(-7).reduce((a, d) => a + RL.total(d), 0);
+  const totalRows = data.sheets.reduce((a, s) => a + s.rowCount, 0), max = data.actors[0].count, used = data.members.length + data.invitations.length;
+  return `<section class="card"><div class="hero-h"><div><h1>${esc(t('dash.summary', { n: tot }))}</h1><p>${esc(t('dash.tz', { tz: data.tz }))}. ${esc(t('dash.checking'))}.</p></div>
+      <div class="legend" role="group" aria-label="${esc(t('dash.activity'))}">${RL.ACTIONS.map((a) => `<button type="button" data-series="${a}" aria-pressed="${!hidden.has(a)}" style="--c:${color(a)}">${esc(t('act.' + a))} <b>${td[a]}</b></button>`).join('')}</div></div>
+      <div id="chart">${chart()}</div>
+      <div class="numbers"><span><b>${data.sheets.length}</b>${esc(t('dash.sheets'))}</span><span><b>${RL.num(totalRows)}</b>${esc(t('dash.rows'))}</span><span><b>${week}</b>${esc(t('dash.week'))}</span><span><b>${data.members.length}</b>${esc(t('dash.members'))}</span></div></section>
+    <div class="cols">
+      <section class="card"><h2>${esc(t('dash.recent'))}</h2><p class="hint">${esc(t('dash.recentHint'))}</p><ul class="feed">${RL.recent().map(eventItem).join('')}</ul></section>
+      <div class="stackcol">
+        <section class="card"><h2>${esc(t('dash.actors'))}</h2><div style="height:8px"></div>${data.actors.map((a) => `<div class="row">${avatar(a.email)}<b>${esc(nm(a.email))}</b><span class="n">${a.count}</span><div class="track"><i style="width:${(a.count / max) * 100}%;--c:${hue(a.email)}"></i></div></div>`).join('')}</section>
+        <section class="card"><h2>${esc(t('dash.freshness'))}</h2><div style="height:6px"></div>${data.sheets.map((s) => {
+          const age = s.importedAt ? (Date.now() - new Date(s.importedAt)) / 864e5 : null;
+          const [label, c, w] = age === null ? [t('dash.never'), 'var(--ink-faint)', 0] : age > 7 ? [t('dash.stale'), 'var(--warn)', Math.min(100, (age / 14) * 100)] : [t('dash.fresh'), 'var(--ok)', Math.max(4, (age / 14) * 100)];
+          return `<div class="sheet"><div class="top2"><div><b>${esc(s.name)}</b><br><small>${esc(label)}${s.importedAt ? ', ' + esc(RL.rel(s.importedAt)) : ''}</small></div><button class="ibtn" data-import="${s.id}">${icon('refresh', 14)}${esc(age === null ? t('dash.import') : t('dash.reimport'))}</button></div><div class="age" aria-hidden="true"><i style="width:${w}%;--c:${c}"></i></div></div>`;
+        }).join('')}</section>
+        <section class="card"><h2>${esc(t('dash.members'))}</h2><div style="height:12px"></div><div class="dots" aria-hidden="true">${Array.from({ length: data.org.seatsMax }, (_, i) => `<i ${i < used ? 'data-on' : ''}></i>`).join('')}</div><p class="hint" style="margin:10px 0 0">${esc(t('dash.seats', { used, max: data.org.seatsMax }))}</p></section>
+      </div></div>`;
+}
+
+function team() {
+  const roles = ['owner', 'admin', 'member'];
+  return `<header class="page-h"><div><h1>${esc(t('team.title'))}</h1><p>${esc(t('team.subtitle'))}</p></div></header><div class="grid2"><div class="stackcol">
+    <section class="card"><h2>${esc(t('team.members'))}</h2><div style="height:8px"></div>${data.members.map((m) => `<div class="person">${avatar(m.email)}<div><b>${esc(m.name)}</b>${m.email === data.me.email ? `<span class="you">${esc(t('team.you'))}</span>` : ''}<small>${esc(m.email)}</small></div>
+      <select class="rl-select" aria-label="${esc(t('team.role'))}: ${esc(m.name)}" ${m.role === 'owner' ? 'disabled' : ''}>${roles.map((r) => `<option ${r === m.role ? 'selected' : ''}>${esc(t('team.' + r))}</option>`).join('')}</select>
+      ${m.role === 'owner' ? '<span></span>' : `<button class="ibtn" data-toast="${esc(t('team.remove'))}">${esc(t('team.remove'))}</button>`}</div>`).join('')}</section>
+    <section class="card"><h2>${esc(t('team.pending'))}</h2><div style="height:8px"></div>${data.invitations.map((i) => `<div class="person"><span class="avatar" style="--c:#7D7396">${icon('mail', 16)}</span><div><b>${esc(i.email)}</b><small>${esc(t('team.' + i.role))}, ${esc(t('team.expires', { t: RL.rel(i.expiresAt) }))}</small></div><span></span><button class="ibtn" data-toast="${esc(t('team.cancel'))}">${esc(t('team.cancel'))}</button></div>`).join('')}</section></div>
+    <section class="card"><h2>${esc(t('team.invite'))}</h2><form class="form" data-invite><label>${esc(t('team.email'))}<input class="rl-field-input" type="email" name="email" required placeholder="name@company.com"></label>
+      <label>${esc(t('team.role'))}<select class="rl-select"><option>${esc(t('team.member'))}</option><option>${esc(t('team.admin'))}</option></select></label>
+      <button class="rl-btn rl-btn-primary" type="submit" style="justify-content:center">${esc(t('team.send'))}</button></form></section></div>`;
+}
+
+function login() {
+  const T = ['cafe'], rows = data.rows.filter((r) => r.some((c) => RL.fold(c).includes('cafe'))).slice(0, 4);
+  return `<div class="lg"><section><div class="brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-7M22 20H2"/></svg>Relay</div>
+    <h1>${esc(t('auth.headline'))}</h1><p class="sub">${esc(t('auth.sub'))}</p>
+    <div class="demo" aria-hidden="true"><span class="rl-chip">cafe</span><div class="rl-tablewrap"><table class="rl-table"><tbody>${rows.map((r) => `<tr><td class="rl-rn">${data.rows.indexOf(r) + 2}</td><td>${RL.highlight(r[0], T)}</td><td>${RL.highlight(r[1], T)}</td><td><span class="rl-pill" data-v="${r[3]}">${r[3]}</span></td></tr>`).join('')}</tbody></table></div></div></section>
+    <form class="lg-card" data-login><div class="lg-top"><h2>${esc(t('auth.signIn'))}</h2>${RL.langToggle()}</div>
+      <label>${esc(t('auth.email'))}<input class="rl-field-input" type="email" value="alex@distnorte.mx" autocomplete="username"></label>
+      <label>${esc(t('auth.password'))}<input class="rl-field-input" type="password" value="••••••••••" autocomplete="current-password"></label>
+      <button class="rl-btn rl-btn-primary" type="submit">${esc(t('auth.signIn'))}</button>
+      <p class="sw">${esc(t('auth.noAccount'))} <a href="#/login">${esc(t('auth.signUp'))}</a></p></form></div>`;
+}
+
+function render(s) {
+  screen = s;
+  if (s === 'login') { app.innerHTML = login(); return; }
+  if (s === 'data') {
+    app.innerHTML = shell(`<header class="page-h"><div><h1>${esc(data.sheetName)}</h1><p>${esc(t('sheets.rowsN', { n: RL.num(data.rows.length) }))}, ${esc(t('sheets.importedAgo', { t: RL.rel(data.sheets[0].importedAt) }).toLowerCase())}</p></div></header><div id="table"></div>`);
+    RL.mountTable(document.getElementById('table'), { drawer: true }); return;
+  }
+  if (s === 'team') { app.innerHTML = shell(team()); return; }
+  screen = 'dashboard'; app.innerHTML = shell(dashboard()); firstDash = false;
+}
+
+app.addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (e.target.matches('[data-login]')) { const b = e.target.querySelector('button[type=submit]'); b.disabled = true; setTimeout(() => (location.hash = '#/dashboard'), 350); }
+  if (e.target.matches('[data-invite]')) { RL.toast(e.target.elements.email.value); e.target.reset(); }
+});
+app.addEventListener('click', (e) => {
+  const sb = e.target.closest('[data-series]');
+  if (sb) { const a = sb.dataset.series; hidden.has(a) ? hidden.delete(a) : hidden.add(a); if (hidden.size === RL.ACTIONS.length) hidden.delete(a); sb.setAttribute('aria-pressed', !hidden.has(a)); document.getElementById('chart').innerHTML = chart(); document.querySelectorAll('.legend button').forEach((b) => b.setAttribute('aria-pressed', !hidden.has(b.dataset.series))); return; }
+  const imp = e.target.closest('[data-import]'); if (imp) { const s = data.sheets.find((x) => x.id === imp.dataset.import); s.importedAt = new Date().toISOString(); if (!s.rowCount) s.rowCount = 64; RL.pushEvent({ source: 'platform', action: 'imported', actor: data.me.email, sheetName: s.name, n: s.rowCount }); RL.toast(s.name); }
+  const tt = e.target.closest('[data-toast]'); if (tt) RL.toast(tt.dataset.toast);
+});
+function showTip(bar) {
+  const tip = document.getElementById('tip'); if (!tip) return;
+  if (!bar) { tip.removeAttribute('data-on'); return; }
+  const d = data.series[+bar.dataset.i], plot = document.getElementById('plot');
+  tip.innerHTML = `<b>${esc(RL.dayLabel(d.date + 'T12:00:00'))}</b>` + RL.ACTIONS.filter((a) => d[a]).map((a) => `<div style="--c:${color(a)}"><span>${esc(t('act.' + a))}</span><span>${d[a]}</span></div>`).join('');
+  const x = bar.offsetLeft + 34 + bar.offsetWidth / 2, w = tip.offsetWidth / 2;
+  tip.style.left = Math.min(Math.max(x, w), plot.offsetWidth - w) + 'px'; tip.setAttribute('data-on', '');
+}
+app.addEventListener('pointerover', (e) => showTip(e.target.closest('.bar')));
+app.addEventListener('pointerleave', () => showTip(null), true);
+app.addEventListener('focusin', (e) => { const b = e.target.closest('.bar'); if (b) showTip(b); });
+app.addEventListener('focusout', () => showTip(null));
+RL.on('event', (ev) => { if (screen !== 'dashboard') return; newId = ev.id; const y = scrollY; render('dashboard'); document.getElementById('main').classList.remove('first'); scrollTo(0, y); setTimeout(() => (newId = null), 2500); });
+RL.simulateLive(9000);
+RL.router(render, 'dashboard');
+</script>
+</body>
+</html>
