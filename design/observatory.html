@@ -101,11 +101,10 @@
 /* feed */
 .feed { list-style: none; margin: 0; padding: 0; }
 .ev { display: grid; grid-template-rows: 1fr; }
-.ev > div { min-height: 0; overflow: hidden; display: grid; grid-template-columns: 3px minmax(0, 1fr) auto; gap: 14px; padding: 12px 0; }
+.ev > div { min-height: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; padding: 12px 0; }
 .ev + .ev > div { border-top: 1px solid var(--row-line); }
-.ev.is-new { transition: grid-template-rows 380ms var(--ease-dialog), opacity 380ms var(--ease-dialog); background: linear-gradient(90deg, var(--accent-wash), transparent 70%); border-radius: 10px; }
+.ev.is-new { transition: grid-template-rows 380ms var(--ease-dialog), opacity 380ms var(--ease-dialog); background: var(--accent-wash); border-radius: 10px; }
 @starting-style { .ev.is-new { grid-template-rows: 0fr; opacity: 0; } }
-.ev .bar3 { border-radius: 3px; background: var(--c); }
 .ev .l1 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .ev .tag { padding: 1px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
 .ev .l2 { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13.5px; color: var(--ink-soft); }
@@ -184,7 +183,7 @@ function eventItem(ev) {
   if (ev.action === 'edited') l2 = `<span class="old">${esc(ev.old || '—')}</span><span aria-hidden="true">→</span><span class="new">${esc(ev.new)}</span>`;
   else if (ev.action === 'added') l2 = `<span class="new">${esc(ev.new)}</span>`;
   else if (ev.action === 'deleted') l2 = `<span class="del">${esc(ev.old)}</span>`;
-  return `<li class="ev ${ev.id === newId ? 'is-new' : ''}" style="--c:${c}"><div><span class="bar3"></span>
+  return `<li class="ev ${ev.id === newId ? 'is-new' : ''}" style="--c:${c}"><div>
     <div><div class="l1"><span class="tag">${esc(t('act.' + ev.action))}</span><span><b>${esc(nm(ev.actor))}</b> ${esc(d.text)}</span></div>${l2 ? `<div class="l2">${l2}</div>` : ''}</div>
     <div class="tm"><time datetime="${ev.at}" title="${esc(RL.clock(ev.at))}">${esc(RL.rel(ev.at))}</time><small>${icon(ev.source === 'sheet' ? 'table' : 'bolt', 13)}${esc(t('source.' + ev.source))}</small></div></div></li>`;
 }
