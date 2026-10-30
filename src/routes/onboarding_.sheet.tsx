@@ -24,7 +24,7 @@ export const Route = createFileRoute('/onboarding_/sheet')({
     const [link, setLink] = useState('')
     const parsed = sheetLink.safeParse(link)
     const test = useMutation({
-      mutationFn: (sheetId: string) => api<boolean>(`/google-sheets/${orgId}/test-sheet`, { sheetId }),
+      mutationFn: (sheetId: string) => api<{ message: string; data: boolean }>(`/google-sheets/${orgId}/test-sheet`, { sheetId }),
       onError: toastError,
     })
 
@@ -61,12 +61,12 @@ export const Route = createFileRoute('/onboarding_/sheet')({
             </button>
           </form>
           {test.isSuccess && (
-            <p className={`sheet-test ${test.data ? 'ok' : 'bad'}`} role="status">
-              <Icon name={test.data ? 'check' : 'x'} />
-              {test.data ? t('sheetSetup.ok') : t('sheetSetup.fail')}
+            <p className={`sheet-test ${test.data.data ? 'ok' : 'bad'}`} role="status">
+              <Icon name={test.data.data ? 'check' : 'x'} />
+              {test.data.data ? t('sheetSetup.ok') : t('sheetSetup.fail')}
             </p>
           )}
-          {test.data && <Link className="rl-btn" to="/dashboard">{t('sheetSetup.continue')}</Link>}
+          {test.data?.data && <Link className="rl-btn" to="/dashboard">{t('sheetSetup.continue')}</Link>}
         </section>
       </div>
     )
