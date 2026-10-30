@@ -17,6 +17,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppDashboardRouteImport } from './routes/_app/dashboard'
 import { Route as AppTeamRouteImport } from './routes/_app/team'
 import { Route as AcceptInvitationIdRouteImport } from './routes/accept-invitation.$id'
+import { Route as OnboardingSheetRouteImport } from './routes/onboarding_.sheet'
 import { Route as AppSheetsIndexRouteImport } from './routes/_app/sheets/index'
 import { Route as AppSheetsSheetIdRouteImport } from './routes/_app/sheets/$sheetId'
 
@@ -59,6 +60,11 @@ const AcceptInvitationIdRoute = AcceptInvitationIdRouteImport.update({
   path: '/accept-invitation/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingSheetRoute = OnboardingSheetRouteImport.update({
+  id: '/onboarding_/sheet',
+  path: '/onboarding/sheet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppSheetsIndexRoute = AppSheetsIndexRouteImport.update({
   id: '/sheets/',
   path: '/sheets/',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/team': typeof AppTeamRoute
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
+  '/onboarding/sheet': typeof OnboardingSheetRoute
   '/sheets/$sheetId': typeof AppSheetsSheetIdRoute
   '/sheets/': typeof AppSheetsIndexRoute
 }
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/team': typeof AppTeamRoute
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
+  '/onboarding/sheet': typeof OnboardingSheetRoute
   '/sheets/$sheetId': typeof AppSheetsSheetIdRoute
   '/sheets': typeof AppSheetsIndexRoute
 }
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/team': typeof AppTeamRoute
   '/accept-invitation/$id': typeof AcceptInvitationIdRoute
+  '/onboarding_/sheet': typeof OnboardingSheetRoute
   '/_app/sheets/$sheetId': typeof AppSheetsSheetIdRoute
   '/_app/sheets/': typeof AppSheetsIndexRoute
 }
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/team'
     | '/accept-invitation/$id'
+    | '/onboarding/sheet'
     | '/sheets/$sheetId'
     | '/sheets/'
   fileRoutesByTo: FileRoutesByTo
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/team'
     | '/accept-invitation/$id'
+    | '/onboarding/sheet'
     | '/sheets/$sheetId'
     | '/sheets'
   id:
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/team'
     | '/accept-invitation/$id'
+    | '/onboarding_/sheet'
     | '/_app/sheets/$sheetId'
     | '/_app/sheets/'
   fileRoutesById: FileRoutesById
@@ -149,6 +161,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   RegisterRoute: typeof RegisterRoute
   AcceptInvitationIdRoute: typeof AcceptInvitationIdRoute
+  OnboardingSheetRoute: typeof OnboardingSheetRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -209,6 +222,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcceptInvitationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding_/sheet': {
+      id: '/onboarding_/sheet'
+      path: '/onboarding/sheet'
+      fullPath: '/onboarding/sheet'
+      preLoaderRoute: typeof OnboardingSheetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/sheets/': {
       id: '/_app/sheets/'
       path: '/sheets'
@@ -249,6 +269,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   RegisterRoute: RegisterRoute,
   AcceptInvitationIdRoute: AcceptInvitationIdRoute,
+  OnboardingSheetRoute: OnboardingSheetRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

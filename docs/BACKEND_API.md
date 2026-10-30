@@ -11,6 +11,7 @@ The frontend always sends `organizationId` explicitly, so it never relies on the
 Still needed: `trustedOrigins` for the dev origin, and a `sendInvitationEmail` stub that logs `<origin>/accept-invitation/<invitationId>`.
 
 ## Exists today: sheets
+- `POST /google-sheets/:orgId/test-sheet` `{ sheetId }` (admin) -> `true | false` (bot can read the sheet)
 - `POST /google-sheets/:orgId/set-sheet-id` `{ sheetId, nameSheet }` (admin)
 - `POST /google-sheets/:orgId/import-sheet` `{ connectionId }` (admin)
 

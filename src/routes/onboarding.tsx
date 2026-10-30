@@ -19,7 +19,7 @@ export const Route = createFileRoute('/onboarding')({
         api('/auth/organization/create', { name, slug: `${fold(name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${crypto.randomUUID().slice(0, 6)}` }),
       onSuccess: async () => {
         router.options.context.queryClient.clear()
-        await router.navigate({ to: '/dashboard' })
+        await router.navigate({ to: '/onboarding/sheet' })
       },
       onError: toastError,
     })

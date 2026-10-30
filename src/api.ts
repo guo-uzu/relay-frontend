@@ -1,4 +1,4 @@
-const BASE = '/api/v1'
+const BASE = 'http://localhost:3000/api/v1'
 
 export class ApiError extends Error {
   status: number
