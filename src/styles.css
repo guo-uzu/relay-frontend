@@ -140,14 +140,6 @@ h1, h2, h3, p { margin: 0; }
 .page-h { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 26px; }
 .page-h h1 { font: 700 clamp(30px, 3.4vw, 44px)/1.05 var(--font-display); letter-spacing: -.03em; max-width: 18ch; }
 .page-h p { color: var(--ink-soft); margin-top: 8px; }
-.live { display: grid; gap: 7px; min-width: 190px; font-size: 13px; color: var(--ink-soft); }
-.live span { display: flex; align-items: center; gap: 9px; }
-.live .dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
-.live .dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--ok); animation: ping 2.2s ease-out infinite; }
-@keyframes ping { to { transform: scale(2.8); opacity: 0; } }
-.poll { height: 3px; border-radius: 3px; background: var(--line-strong); overflow: hidden; }
-.poll i { display: block; height: 100%; background: var(--accent); transform-origin: left; animation: poll 30s linear infinite; }
-@keyframes poll { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* proportional breakdown instead of a big-number card */
 .split { display: flex; height: 14px; gap: 3px; margin: 4px 0 12px; }
@@ -185,14 +177,6 @@ h1, h2, h3, p { margin: 0; }
 .when span { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; color: var(--ink-faint); }
 
 /* side panels */
-.bars { display: flex; align-items: flex-end; gap: 3px; height: 150px; }
-.bar { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 2px 2px; overflow: hidden; }
-.bar i { display: block; width: 100%; background: var(--c); }
-.bar:last-child { outline: 2px solid var(--ink); outline-offset: 2px; }
-.axis { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12.5px; color: var(--ink-faint); }
-.who { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-.who .nm { flex: 1; min-width: 0; } .who small { display: block; color: var(--ink-soft); font-size: 12.5px; }
-.who .count { font: 700 17px var(--font-display); }
 .sheetrow { display: flex; align-items: center; gap: 12px; padding: 11px 0; }
 .sheetrow + .sheetrow { border-top: 1px solid var(--row-line); }
 .sheetrow .sd { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }

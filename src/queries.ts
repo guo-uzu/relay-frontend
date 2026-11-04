@@ -3,7 +3,6 @@ import { api } from './api'
 import type { Dashboard, Org, RowsResult, SheetSummary, Session, TableSearch } from './types'
 
 export const PAGE_SIZE = 20
-export const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 export const sessionQuery = queryOptions({ queryKey: ['session'], queryFn: () => api<Session>('/auth/get-session') })
 
@@ -13,11 +12,7 @@ export const orgQuery = (orgId: string) =>
   queryOptions({ queryKey: ['org', orgId], queryFn: () => api<Org>(`/auth/organization/get-full-organization?organizationId=${orgId}`) })
 
 export const dashboardQuery = (orgId: string) =>
-  queryOptions({
-    queryKey: ['dashboard', orgId, tz],
-    queryFn: () => api<Dashboard>(`/orgs/${orgId}/dashboard?tz=${encodeURIComponent(tz)}`),
-    refetchInterval: 30_000,
-  })
+  queryOptions({ queryKey: ['dashboard', orgId], queryFn: () => api<Dashboard>(`/orgs/${orgId}/dashboard`) })
 
 export const sheetsQuery = (orgId: string) =>
   queryOptions({ queryKey: ['sheets', orgId], queryFn: () => api<SheetSummary[]>(`/google-sheets/${orgId}/sheets`) })
