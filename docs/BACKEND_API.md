@@ -15,17 +15,15 @@ Still needed: `trustedOrigins` for the dev origin, and a `sendInvitationEmail` s
 - `POST /google-sheets/:orgId/set-sheet-id` `{ sheetId, nameSheet }` (admin)
 - `POST /google-sheets/:orgId/import-sheet` `{ connectionId }` (admin)
 
-## To build
+## Current sheet endpoints
 1. `GET /google-sheets/:orgId/sheets` -> `{ id, name, rowCount, importedAt|null }[]` (`id` = connection id).
 2. `POST /google-sheets/:orgId/sheets/:sheetId/rows`
    body `{ terms: string[], mode: 'and'|'or', filters: {column, op, value}[], fmode: 'and'|'or', sort?: column, dir: 'asc'|'desc', page (1-based), size }`
    `op` is one of `contains | equals | startsWith | gt | lt | isEmpty`. Terms match any column, accent- and case-insensitive (the frontend highlights the same way).
    Response: `{ headers: string[], sheetName, total, rows: { n: sheetRowNumber, cells: string[] }[] }`
-3. `POST /google-sheets/:orgId/sheets/:sheetId/rows/append` `{ cells: string[] }` (any member). Writes to Google Sheets; the service account must be Editor.
-4. `GET /orgs/:orgId/dashboard?tz=<IANA>` ->
-   `{ series: ({date:'YYYY-MM-DD'} & Record<'added'|'edited'|'deleted'|'imported'|'connected', number>)[]  (30 days, last = today in tz),
+3. `GET /orgs/:orgId/dashboard` ->
+   `{ today: Record<'added'|'edited'|'deleted'|'imported'|'connected', number>,  // CDMX day
       events: { id, action, source:'sheet'|'platform', actor: email, at: ISO UTC, sheetName, row?, column?, old?, new?, n? }[]  (latest 15),
-      actors: { email, count }[]  (this week),
       sheets: same shape as 1,
-      seats: { used (members + pending invites), max } }`
-5. `history` table (`source`, `actor`, `action`, `details`, `sheetId`, `timestamptz`); the webhook and API writes feed it.
+      seats: { used } }`
+4. The page is read-only: there is no append, edit or delete endpoint. `history` is fed by the webhook and by connect/import actions.
