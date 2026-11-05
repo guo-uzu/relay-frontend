@@ -2,10 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Icon } from '../../components/Icon'
-import { Avatar, nameOf } from '../../components/bits'
-import { day, rel, num } from '../../lib'
+import { nameOf } from '../../components/bits'
+import { rel, num } from '../../lib'
 import { useImportSheet } from '../../mutations'
-import { dashboardQuery, tz } from '../../queries'
+import { dashboardQuery } from '../../queries'
 import { ACTIONS, type HistoryEvent } from '../../types'
 
 export const Route = createFileRoute('/_app/dashboard')({
@@ -23,37 +23,30 @@ function Dashboard() {
   const { data } = useSuspenseQuery(dashboardQuery(orgId))
   const importSheet = useImportSheet(orgId)
 
-  const today = data.series[data.series.length - 1]
-  const max = Math.max(1, ...data.series.map(total))
-  const week = data.series.slice(-7).reduce((s, d) => s + total(d), 0)
+  const today = data.today
   const rows = data.sheets.reduce((s, x) => s + x.rowCount, 0)
 
   return (
     <>
       <header {...rise(0, 'page-h')}>
         <div>
-          <h1>{t('dash.summary', { n: today ? total(today) : 0 })}</h1>
-          <p>{t('dash.tz', { tz })}</p>
+          <h1>{t('dash.summary', { n: total(today) })}</h1>
         </div>
-        <div className="live"><span><i className="dot" />{t('dash.checking')}</span><div className="poll" aria-hidden="true"><i /></div></div>
       </header>
 
-      {today && (
-        <section {...rise(1)} aria-label={t('dash.today')}>
-          <div className="split" aria-hidden="true">
-            {ACTIONS.filter((a) => today[a]).map((a) => <i key={a} style={{ '--n': today[a], '--c': color(a) } as React.CSSProperties} />)}
-          </div>
-          <div className="split-legend">
-            {ACTIONS.filter((a) => today[a]).map((a) => <span key={a} style={{ '--c': color(a) } as React.CSSProperties}><b>{today[a]}</b>{t(`act.${a}`)}</span>)}
-          </div>
-          <dl className="stats">
-            <div><dd>{data.sheets.length}</dd><dt>{t('dash.sheets')}</dt></div>
-            <div><dd>{num(rows)}</dd><dt>{t('dash.rows')}</dt></div>
-            <div><dd>{num(week)}</dd><dt>{t('dash.week')}</dt></div>
-            <div><dd>{t('dash.seatsOf', data.seats)}</dd><dt>{t('dash.members')}</dt></div>
-          </dl>
-        </section>
-      )}
+      <section {...rise(1)} aria-label={t('dash.today')}>
+        <div className="split" aria-hidden="true">
+          {ACTIONS.filter((a) => today[a]).map((a) => <i key={a} style={{ '--n': today[a], '--c': color(a) } as React.CSSProperties} />)}
+        </div>
+        <div className="split-legend">
+          {ACTIONS.filter((a) => today[a]).map((a) => <span key={a} style={{ '--c': color(a) } as React.CSSProperties}><b>{today[a]}</b>{t(`act.${a}`)}</span>)}
+        </div>
+        <dl className="stats">
+          <div><dd>{data.sheets.length}</dd><dt>{t('dash.sheets')}</dt></div>
+          <div><dd>{num(rows)}</dd><dt>{t('dash.rows')}</dt></div>
+          <div><dd>{num(data.seats.used)}</dd><dt>{t('dash.members')}</dt></div>
+        </dl>
+      </section>
 
       <div className="cols">
         <section {...rise(2, 'panel feed')}>
@@ -63,23 +56,6 @@ function Dashboard() {
         </section>
         <div>
           <section {...rise(3, 'panel')}>
-            <h2>{t('dash.activity')}</h2>
-            <div className="bars" role="img" aria-label={t('dash.activity')} style={{ marginTop: 14 }}>
-              {data.series.map((d) => (
-                <div className="bar" key={d.date} title={`${d.date}: ${total(d)}`}>
-                  {ACTIONS.map((a) => <i key={a} style={{ '--c': color(a), height: `${(d[a] / max) * 100}%` } as React.CSSProperties} />)}
-                </div>
-              ))}
-            </div>
-            <div className="axis"><span>{day(data.series[0]!.date)}</span><span>{t('dash.today')}</span></div>
-          </section>
-          <section {...rise(4, 'panel')}>
-            <h2>{t('dash.actors')}</h2>
-            {data.actors.map((a) => (
-              <div className="who" key={a.email}><Avatar who={a.email} /><div className="nm"><b>{nameOf(a.email)}</b></div><span className="count">{a.count}</span></div>
-            ))}
-          </section>
-          <section {...rise(5, 'panel')}>
             <h2>{t('dash.freshness')}</h2>
             {data.sheets.map((s) => {
               const age = s.importedAt ? (Date.now() - new Date(s.importedAt).getTime()) / 864e5 : null

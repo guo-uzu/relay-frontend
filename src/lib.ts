@@ -25,5 +25,3 @@ export const toastError = (e: unknown) => toast.error(errorText(e))
 
 // Accent- and case-insensitive; the backend must fold the same way or matches are found but not highlighted.
 export const fold = (s: string) => [...s].map((c) => [...c.normalize('NFD')][0]!).join('').toLowerCase()
-
-export const day = (ymd: string) => new Intl.DateTimeFormat(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(`${ymd}T12:00:00`))
