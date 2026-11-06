@@ -18,11 +18,10 @@ export type HistoryEvent = {
 }
 
 export type Dashboard = {
-  series: ({ date: string } & Record<Action, number>)[]
+  today: Record<Action, number>
   events: HistoryEvent[]
-  actors: { email: string; count: number }[]
   sheets: SheetSummary[]
-  seats: { used: number; max: number }
+  seats: { used: number }
 }
 
 export const OPS = ['contains', 'equals', 'startsWith', 'gt', 'lt', 'isEmpty'] as const

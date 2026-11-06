@@ -23,7 +23,7 @@ Login-gated dashboard behind Better Auth (cookie session, organizations plugin).
 
 ## Capabilities and Constraints
 - Routes: /login, /register, /accept-invitation/$id, /onboarding, /dashboard, /sheets, /sheets/$sheetId, /org/members, /org/invitations, /org/settings.
-- One organization per user. Read plus append only; no row editing, no real-time sync, polling only.
+- One organization per user. Read only: no appending, editing or deleting. No real-time sync; the dashboard refreshes on navigation.
 - English and Spanish required; backend errors mapped by code.
 - MVP: results first, details refined with usage.
 - Open: which of three static design options in `design/` (Ledger, Dispatch, Observatory, or a mix); whether the feed shows both sources; whether API writes fire the Apps Script webhook.
