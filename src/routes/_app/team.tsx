@@ -48,7 +48,10 @@ function Team() {
                   </div>
                   <select
                     className="rl-select" aria-label={`${t('team.role')}: ${m.user.name}`} disabled={locked} value={m.role}
-                    onChange={(e) => run.mutate(() => act('update-member-role', { memberId: m.id, role: e.target.value }))}
+                    onChange={(e) => {
+                      const role = e.target.value // read now: the select is controlled and snaps back to m.role after this handler
+                      run.mutate(() => act('update-member-role', { memberId: m.id, role }))
+                    }}
                   >
                     {(locked ? ['owner', 'admin', 'member'] : ['admin', 'member']).map((r) => <option key={r} value={r}>{t(`team.${r as 'owner'}`)}</option>)}
                   </select>
