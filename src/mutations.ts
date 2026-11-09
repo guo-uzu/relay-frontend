@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api } from './api'
 import { toastError } from './lib'
+import type { HeaderConfig } from './types'
 
 export function useImportSheet(orgId: string) {
   const qc = useQueryClient()
@@ -12,6 +13,19 @@ export function useImportSheet(orgId: string) {
     onSuccess: () => {
       toast.success(t('sheets.imported'))
       return qc.invalidateQueries() // imports change dashboard, sheet list and row data at once
+    },
+    onError: toastError,
+  })
+}
+
+export function useSaveHeaders(orgId: string, sheetId: string) {
+  const qc = useQueryClient()
+  const { t } = useTranslation()
+  return useMutation({
+    mutationFn: (headers: HeaderConfig[]) => api(`/google-sheets/${orgId}/sheets/${sheetId}/headers`, { headers }),
+    onSuccess: () => {
+      toast.success(t('headers.saved'))
+      return qc.invalidateQueries({ queryKey: ['headers', orgId, sheetId] })
     },
     onError: toastError,
   })

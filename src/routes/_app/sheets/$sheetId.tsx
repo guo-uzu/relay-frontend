@@ -5,9 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api } from '../../../api'
 import { Highlight } from '../../../components/bits'
+import { HeadersForm } from '../../../components/HeadersForm'
 import { Icon } from '../../../components/Icon'
 import { fold, num, toastError } from '../../../lib'
-import { PAGE_SIZE, rowsQuery } from '../../../queries'
+import { headersQuery, PAGE_SIZE, rowsQuery } from '../../../queries'
 import { OPS, type Op, type Rule, type TableSearch } from '../../../types'
 
 const isRule = (r: unknown): r is Rule => {
@@ -27,7 +28,10 @@ export const Route = createFileRoute('/_app/sheets/$sheetId')({
     page: Math.max(1, Math.floor(Number(s.page)) || 1),
   }),
   loaderDeps: ({ search }) => search,
-  loader: ({ context, params, deps }) => context.queryClient.ensureQueryData(rowsQuery(context.orgId, params.sheetId, deps)),
+  loader: ({ context, params, deps }) => Promise.all([
+    context.queryClient.ensureQueryData(rowsQuery(context.orgId, params.sheetId, deps)),
+    context.queryClient.ensureQueryData(headersQuery(context.orgId, params.sheetId)), // so HeadersForm does not suspend the page
+  ]),
   component: DataTable,
 })
 
@@ -43,7 +47,9 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: string[]; she
   const { t } = useTranslation()
   const qc = useQueryClient()
   const dlg = useRef<HTMLDialogElement>(null)
-  const [empty, setEmpty] = useState(false)
+  const { data: config } = useSuspenseQuery(headersQuery(orgId, sheetId))
+  const optional = headers.map((h) => config.find((c) => c.name === h)?.optional ?? false) // by name, so a changed header list cannot misalign
+  const [err, setErr] = useState<{ msg: string; missing: number[] } | null>(null)
   const append = useMutation({
     mutationFn: (cells: string[]) => api(`/google-sheets/${orgId}/sheets/${sheetId}/rows/append`, { cells }),
     onSuccess: () => {
@@ -56,7 +62,7 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: string[]; she
 
   return (
     <>
-      <button type="button" className="rl-btn rl-btn-primary" onClick={() => { setEmpty(false); dlg.current?.showModal() }}>
+      <button type="button" className="rl-btn rl-btn-primary" onClick={() => { setErr(null); dlg.current?.showModal() }}>
         <Icon name="plus" size={16} /><span>{t('table.addRow')}</span>
       </button>
       <dialog className="rl-dialog" ref={dlg} aria-labelledby="addrow-title" onClick={(e) => e.target === dlg.current && dlg.current.close()}>
@@ -66,20 +72,50 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: string[]; she
             const form = e.currentTarget
             const f = new FormData(form)
             const cells = headers.map((_, i) => String(f.get(`c${i}`) ?? '').trim())
-            if (!cells.some(Boolean)) return setEmpty(true)
+            const missing = cells.flatMap((c, i) => (!optional[i] && !c ? [i] : []))
+            if (missing.length) {
+              setErr({ msg: t('addrow.error', { cols: missing.map((i) => headers[i]).join(', ') }), missing })
+              return (form.elements.namedItem(`c${missing[0]}`) as HTMLInputElement).focus()
+            }
+            if (!cells.some(Boolean)) return setErr({ msg: t('addrow.errorEmpty'), missing: [] })
+            setErr(null)
             append.mutate(cells, { onSuccess: () => form.reset() })
           }}
         >
           <header><h2 id="addrow-title">{t('addrow.title', { sheet: sheetName })}</h2><p>{t('addrow.hint')}</p></header>
           <div className="rl-fields">
-            {headers.map((h, i) => <label key={h + i}>{h}<input className="rl-field-input" name={`c${i}`} autoComplete="off" /></label>)}
+            {headers.map((h, i) => (
+              <label key={h + i}>
+                <span className="rl-lbl">{h}{optional[i] ? <span className="rl-opt">{t('headers.optional')}</span> : <span className="rl-req" title={t('addrow.required')} aria-hidden>*</span>}</span>
+                <input
+                  className="rl-field-input" name={`c${i}`} autoComplete="off"
+                  aria-required={!optional[i]} aria-invalid={err?.missing.includes(i) ?? false}
+                  onChange={() => setErr((e) => e && { ...e, missing: e.missing.filter((x) => x !== i) })}
+                />
+              </label>
+            ))}
           </div>
-          {empty && <p className="rl-error" role="alert">{t('addrow.error')}</p>}
+          {err && <p className="rl-error" role="alert">{err.msg}</p>}
           <footer>
             <button type="button" className="rl-btn" onClick={() => dlg.current?.close()}>{t('addrow.cancel')}</button>
             <button className="rl-btn rl-btn-primary" type="submit" disabled={append.isPending}>{t('addrow.submit')}</button>
           </footer>
         </form>
+      </dialog>
+    </>
+  )
+}
+
+function FormFields({ orgId, sheetId }: { orgId: string; sheetId: string }) {
+  const { t } = useTranslation()
+  const dlg = useRef<HTMLDialogElement>(null)
+  return (
+    <>
+      <button type="button" className="rl-btn" onClick={() => dlg.current?.showModal()}>
+        <Icon name="sliders" size={16} /><span>{t('headers.button')}</span>
+      </button>
+      <dialog className="rl-dialog" ref={dlg} aria-label={t('headers.button')} onClick={(e) => e.target === dlg.current && dlg.current.close()}>
+        <HeadersForm orgId={orgId} sheetId={sheetId} onDone={() => dlg.current?.close()} />
       </dialog>
     </>
   )
@@ -105,7 +141,7 @@ function DataTable() {
   return (
     <>
       <header className="page-h">
-        <div><h1>{sheetName}</h1><p>{t('sheets.rowsN', { n: num(total) })}</p></div>
+        <div><h1>{sheetName}</h1><p>{t('sheets.rowsN', { n: num(total) })}</p>  </div>
       </header>
 
       <div className="rl-toolbar">
@@ -133,6 +169,7 @@ function DataTable() {
         <button type="button" className="rl-btn" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}>
           <Icon name="filter" size={16} /><span>{t('table.filters')}</span><b className="rl-count">{search.filters.length || ''}</b>
         </button>
+        <FormFields orgId={orgId} sheetId={sheetId} />
         <AddRow headers={headers} sheetName={sheetName} orgId={orgId} sheetId={sheetId} />
       </div>
 

@@ -77,7 +77,27 @@ h1, h2, h3, p { margin: 0; }
 .rl-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .rl-fields .rl-field-input { width: 100%; }
 .rl-error { color: var(--bad); font-size: .93em; font-weight: 500; }
+.rl-lbl { display: flex; align-items: baseline; gap: 3px; }
+.rl-req { color: var(--bad, #B3342B); font-weight: 700; }
+.rl-opt { margin-left: auto; font-weight: 400; font-size: .92em; color: var(--ink-faint, var(--ink-soft)); }
+.rl-field-input[aria-invalid=true] { border-color: var(--bad, #B3342B); outline-color: var(--bad, #B3342B); }
 .rl-dialog footer { display: flex; justify-content: flex-end; gap: 8px; }
+
+.rl-hdr-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--ink-soft); font-size: .93em; font-weight: 500; }
+.rl-link { padding: 2px 0; border: 0; background: none; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.rl-link:disabled { opacity: .4; text-decoration: none; cursor: default; }
+.rl-hdrs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.rl-hdr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 12px; text-align: left; background: var(--field); border: 1px solid var(--line); border-radius: var(--radius-sm); transition: background-color 140ms var(--ease), border-color 140ms var(--ease), transform 140ms var(--ease); }
+.rl-hdr:active { transform: scale(.99); }
+@media (hover: hover) { .rl-hdr:hover { border-color: var(--line-strong); background: var(--hover); } }
+.rl-hdr[aria-checked=true] { border-color: var(--accent); background: var(--accent-wash); }
+.rl-hdr-name { display: grid; gap: 1px; min-width: 0; }
+.rl-hdr-state { font-size: .86em; font-weight: 600; color: var(--ink-soft); }
+.rl-hdr[aria-checked=true] .rl-hdr-state { color: var(--accent); }
+.rl-knob { position: relative; width: 36px; height: 20px; border-radius: 99px; background: var(--line-strong); transition: background-color 140ms var(--ease); }
+.rl-knob::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--panel); box-shadow: 0 1px 2px rgb(0 0 0 / .3); transition: transform 140ms var(--ease); }
+.rl-hdr[aria-checked=true] .rl-knob { background: var(--accent); }
+.rl-hdr[aria-checked=true] .rl-knob::after { transform: translateX(16px); }
 
 /* toasts */
 

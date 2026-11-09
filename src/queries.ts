@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 import { api } from './api'
-import type { Dashboard, Org, RowsResult, SheetSummary, Session, TableSearch } from './types'
+import type { Dashboard, HeaderConfig, Org, RowsResult, SheetSummary, Session, TableSearch } from './types'
 
 export const PAGE_SIZE = 20
 
@@ -16,6 +16,9 @@ export const dashboardQuery = (orgId: string) =>
 
 export const sheetsQuery = (orgId: string) =>
   queryOptions({ queryKey: ['sheets', orgId], queryFn: () => api<SheetSummary[]>(`/google-sheets/${orgId}/sheets`) })
+
+export const headersQuery = (orgId: string, sheetId: string) =>
+  queryOptions({ queryKey: ['headers', orgId, sheetId], queryFn: () => api<HeaderConfig[]>(`/google-sheets/${orgId}/sheets/${sheetId}/headers`) })
 
 export const rowsQuery = (orgId: string, sheetId: string, s: TableSearch) =>
   queryOptions({
