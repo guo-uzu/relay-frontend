@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useRef,useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import {  useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { api } from '../../../api'
 import { Highlight } from '../../../components/bits'
 import { Icon } from '../../../components/Icon'
-import { fold, num } from '../../../lib'
+import { fold, num, toastError } from '../../../lib'
 import { PAGE_SIZE, rowsQuery } from '../../../queries'
 import { OPS, type Op, type Rule, type TableSearch } from '../../../types'
 
@@ -34,6 +36,52 @@ function Seg<T extends string>({ value, items, onChange }: { value: T; items: [T
     <div className="rl-seg" role="group">
       {items.map(([v, label]) => <button key={v} type="button" aria-pressed={value === v} onClick={() => onChange(v)}>{label}</button>)}
     </div>
+  )
+}
+
+function AddRow({ headers, sheetName, orgId, sheetId }: { headers: string[]; sheetName: string; orgId: string; sheetId: string }) {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const dlg = useRef<HTMLDialogElement>(null)
+  const [empty, setEmpty] = useState(false)
+  const append = useMutation({
+    mutationFn: (cells: string[]) => api(`/google-sheets/${orgId}/sheets/${sheetId}/rows/append`, { cells }),
+    onSuccess: () => {
+      dlg.current?.close()
+      toast.success(t('addrow.done', { sheet: sheetName }))
+      return qc.invalidateQueries() // the new row changes row data, sheet list and dashboard
+    },
+    onError: toastError,
+  })
+
+  return (
+    <>
+      <button type="button" className="rl-btn rl-btn-primary" onClick={() => { setEmpty(false); dlg.current?.showModal() }}>
+        <Icon name="plus" size={16} /><span>{t('table.addRow')}</span>
+      </button>
+      <dialog className="rl-dialog" ref={dlg} aria-labelledby="addrow-title" onClick={(e) => e.target === dlg.current && dlg.current.close()}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            const form = e.currentTarget
+            const f = new FormData(form)
+            const cells = headers.map((_, i) => String(f.get(`c${i}`) ?? '').trim())
+            if (!cells.some(Boolean)) return setEmpty(true)
+            append.mutate(cells, { onSuccess: () => form.reset() })
+          }}
+        >
+          <header><h2 id="addrow-title">{t('addrow.title', { sheet: sheetName })}</h2><p>{t('addrow.hint')}</p></header>
+          <div className="rl-fields">
+            {headers.map((h, i) => <label key={h + i}>{h}<input className="rl-field-input" name={`c${i}`} autoComplete="off" /></label>)}
+          </div>
+          {empty && <p className="rl-error" role="alert">{t('addrow.error')}</p>}
+          <footer>
+            <button type="button" className="rl-btn" onClick={() => dlg.current?.close()}>{t('addrow.cancel')}</button>
+            <button className="rl-btn rl-btn-primary" type="submit" disabled={append.isPending}>{t('addrow.submit')}</button>
+          </footer>
+        </form>
+      </dialog>
+    </>
   )
 }
 
@@ -85,6 +133,7 @@ function DataTable() {
         <button type="button" className="rl-btn" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}>
           <Icon name="filter" size={16} /><span>{t('table.filters')}</span><b className="rl-count">{search.filters.length || ''}</b>
         </button>
+        <AddRow headers={headers} sheetName={sheetName} orgId={orgId} sheetId={sheetId} />
       </div>
 
       {showFilters && <Filters headers={headers} search={search} set={set} />}

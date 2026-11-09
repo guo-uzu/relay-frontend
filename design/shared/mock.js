@@ -35,9 +35,15 @@
       'table.removeTerm': 'Remove {term}', 'table.removeRule': 'Remove filter', 'table.searchLabel': 'Search terms',
       'op.contains': 'contains', 'op.equals': 'is', 'op.startsWith': 'starts with', 'op.gt': 'greater than',
       'op.lt': 'less than', 'op.isEmpty': 'is empty',
-      'addrow.title': 'Add a row to {sheet}', 'addrow.hint': 'Fill in at least one column. The row is added to the end of the Google Sheet.',
-      'addrow.submit': 'Add row', 'addrow.cancel': 'Cancel', 'addrow.error': 'Fill in at least one column.',
+      'addrow.title': 'Add a row to {sheet}', 'addrow.hint': 'Fill in every required column. Optional ones can stay empty. The row is added to the end of the Google Sheet.',
+      'addrow.submit': 'Add row', 'addrow.cancel': 'Cancel', 'addrow.error': 'Fill in the required columns: {cols}.',
+      'addrow.errorEmpty': 'Fill in at least one column.', 'addrow.required': 'Required',
       'addrow.done': 'Row added to {sheet}',
+      'headers.button': 'Form fields', 'headers.title': 'Form fields',
+      'headers.hint': 'Choose which columns can be left empty when adding a row. Every column is required until you change it.',
+      'headers.required': 'Required', 'headers.optional': 'Optional', 'headers.example': 'e.g. {v}',
+      'headers.summary': '{n} of {total} optional', 'headers.reset': 'Make all required',
+      'headers.save': 'Save changes', 'headers.cancel': 'Cancel', 'headers.saved': 'Form fields updated',
       'team.title': 'Team', 'team.subtitle': 'Only admins can see this page.', 'team.invite': 'Invite member',
       'team.email': 'Email', 'team.role': 'Role', 'team.owner': 'Owner', 'team.admin': 'Admin', 'team.member': 'Member',
       'team.remove': 'Remove', 'team.pending': 'Pending invitations', 'team.cancel': 'Cancel invite',
@@ -72,9 +78,15 @@
       'table.removeTerm': 'Quitar {term}', 'table.removeRule': 'Quitar filtro', 'table.searchLabel': 'Términos de búsqueda',
       'op.contains': 'contiene', 'op.equals': 'es igual a', 'op.startsWith': 'empieza con', 'op.gt': 'mayor que',
       'op.lt': 'menor que', 'op.isEmpty': 'está vacío',
-      'addrow.title': 'Agregar una fila a {sheet}', 'addrow.hint': 'Llena al menos una columna. La fila se agrega al final de la hoja de Google.',
-      'addrow.submit': 'Agregar fila', 'addrow.cancel': 'Cancelar', 'addrow.error': 'Llena al menos una columna.',
+      'addrow.title': 'Agregar una fila a {sheet}', 'addrow.hint': 'Llena todas las columnas obligatorias. Las opcionales pueden quedar vacías. La fila se agrega al final de la hoja de Google.',
+      'addrow.submit': 'Agregar fila', 'addrow.cancel': 'Cancelar', 'addrow.error': 'Llena las columnas obligatorias: {cols}.',
+      'addrow.errorEmpty': 'Llena al menos una columna.', 'addrow.required': 'Obligatoria',
       'addrow.done': 'Fila agregada a {sheet}',
+      'headers.button': 'Campos del formulario', 'headers.title': 'Campos del formulario',
+      'headers.hint': 'Elige qué columnas pueden quedar vacías al agregar una fila. Todas son obligatorias hasta que lo cambies.',
+      'headers.required': 'Obligatoria', 'headers.optional': 'Opcional', 'headers.example': 'p. ej. {v}',
+      'headers.summary': '{n} de {total} opcionales', 'headers.reset': 'Hacer todas obligatorias',
+      'headers.save': 'Guardar cambios', 'headers.cancel': 'Cancelar', 'headers.saved': 'Campos del formulario actualizados',
       'team.title': 'Equipo', 'team.subtitle': 'Solo los administradores ven esta página.', 'team.invite': 'Invitar miembro',
       'team.email': 'Correo electrónico', 'team.role': 'Rol', 'team.owner': 'Propietario', 'team.admin': 'Administrador', 'team.member': 'Miembro',
       'team.remove': 'Quitar', 'team.pending': 'Invitaciones pendientes', 'team.cancel': 'Cancelar invitación',
@@ -99,6 +111,11 @@
     pick(clients), pick(products), String(pick([2, 4, 5, 6, 8, 10, 12, 20, 24, 40])), status(),
     '2026-10-' + String(1 + Math.floor((i * 26) / 48)).padStart(2, '0'), pick(notes),
   ]);
+
+  /* Backend contract for the form fields. GET /sheets/:id/headers returns one object per column,
+     in sheet order: [{ name: string, optional: boolean }]. Every column starts with optional: false.
+     PUT /sheets/:id/headers takes the same array back after the user changes it. */
+  const headerConfig = headers.map((name) => ({ name, optional: false }));
 
   const SHEET = 'Pedidos octubre';
   const ACTIONS = ['added', 'edited', 'deleted', 'imported', 'connected'];
@@ -136,7 +153,7 @@
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     org: { name: 'Distribuidora Norte', plan: 'free', seatsMax: 5 },
     me: { name: 'Alejandro Ruiz', email: 'alex@distnorte.mx', role: 'owner' },
-    sheetName: SHEET, headers, rows, events, series,
+    sheetName: SHEET, headers, headerConfig, rows, events, series,
     sheets: [
       { id: 's1', name: SHEET, rowCount: rows.length, importedAt: ago(3 * H) },
       { id: 's2', name: 'Inventario bodega', rowCount: 612, importedAt: ago(47 * MIN) },
@@ -232,6 +249,7 @@
     logout: '<path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/>',
     bolt: '<path d="M13 3 5 13.5h6L10 21l8-10.5h-6z"/>', filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
     refresh: '<path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4"/>', x: '<path d="m6 6 12 12M18 6 6 18"/>',
+    sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   };
   const icon = (n, size) => '<svg class="rl-i" viewBox="0 0 24 24" width="' + (size || 18) + '" height="' + (size || 18) + '" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[n] + '</svg>';
 
@@ -292,6 +310,7 @@
         '<input class="rl-input" data-rl="term" type="text" autocomplete="off" spellcheck="false" aria-label="' + esc(t('table.searchLabel')) + '" placeholder="' + esc(t('table.search')) + '"></div>' +
         '<div data-rl="mode">' + seg('data-mode', T.mode, [['and', t('table.all')], ['or', t('table.any')]]) + '</div>' +
         '<button type="button" class="rl-btn" data-rl="toggle-filters" aria-expanded="' + T.showFilters + '">' + icon('filter', 16) + '<span>' + esc(t('table.filters')) + '</span><b class="rl-count" data-rl="fcount"></b></button>' +
+        '<button type="button" class="rl-btn" data-rl="open-headers">' + icon('sliders', 16) + '<span>' + esc(t('headers.button')) + '</span></button>' +
         '<button type="button" class="rl-btn rl-btn-primary" data-rl="add-row">' + icon('plus', 16) + '<span>' + esc(t('table.addRow')) + '</span></button>' +
       '</div>' +
       '<form class="rl-filters" data-rl="filter-form"' + (T.showFilters ? '' : ' hidden') + '>' +
@@ -306,13 +325,40 @@
       '<div class="rl-pager"><span data-rl="range" aria-live="polite"></span><span class="rl-pager-btns"><button type="button" class="rl-btn" data-page="-1">' + esc(t('table.prev')) + '</button><button type="button" class="rl-btn" data-page="1">' + esc(t('table.next')) + '</button></span></div>' +
       '<dialog class="rl-dialog' + (opts.drawer ? ' rl-dialog--drawer' : '') + '" data-rl="dialog" aria-labelledby="rl-dlg-title"><form data-rl="row-form" novalidate>' +
         '<header><h2 id="rl-dlg-title">' + esc(t('addrow.title', { sheet: data.sheetName })) + '</h2><p>' + esc(t('addrow.hint')) + '</p></header>' +
-        '<div class="rl-fields">' + headers.map((h, i) => '<label>' + esc(h) + '<input class="rl-field-input" name="c' + i + '" autocomplete="off"' + (h === 'Fecha' ? ' placeholder="2026-10-26"' : '') + '></label>').join('') + '</div>' +
-        '<p class="rl-error" data-rl="row-error" role="alert" hidden>' + esc(t('addrow.error')) + '</p>' +
+        '<div class="rl-fields" data-rl="row-fields"></div>' +
+        '<p class="rl-error" data-rl="row-error" role="alert" hidden></p>' +
         '<footer><button type="button" class="rl-btn" data-rl="close-dialog">' + esc(t('addrow.cancel')) + '</button><button class="rl-btn rl-btn-primary" type="submit">' + esc(t('addrow.submit')) + '</button></footer>' +
+      '</form></dialog>' +
+      '<dialog class="rl-dialog' + (opts.drawer ? ' rl-dialog--drawer' : '') + '" data-rl="hdr-dialog" aria-labelledby="rl-hdr-title"><form data-rl="hdr-form" novalidate>' +
+        '<header><h2 id="rl-hdr-title">' + esc(t('headers.title')) + '</h2><p>' + esc(t('headers.hint')) + '</p></header>' +
+        '<div class="rl-hdr-bar"><span data-rl="hdr-summary" aria-live="polite"></span><button type="button" class="rl-link" data-rl="hdr-reset">' + esc(t('headers.reset')) + '</button></div>' +
+        '<ul class="rl-hdrs" data-rl="hdr-list"></ul>' +
+        '<footer><button type="button" class="rl-btn" data-rl="close-hdr">' + esc(t('headers.cancel')) + '</button><button class="rl-btn rl-btn-primary" type="submit">' + esc(t('headers.save')) + '</button></footer>' +
       '</form></dialog>';
 
     const $ = (s) => root.querySelector(s);
-    const dlg = $('[data-rl=dialog]');
+    const dlg = $('[data-rl=dialog]'), hdlg = $('[data-rl=hdr-dialog]');
+    let draft = [];
+
+    /* Add-row form: required columns get an asterisk, optional ones are tagged. */
+    function renderFields() {
+      $('[data-rl=row-fields]').innerHTML = data.headerConfig.map((h, i) => '<label><span class="rl-lbl">' + esc(h.name) +
+        (h.optional ? '<span class="rl-opt">' + esc(t('headers.optional')) + '</span>' : '<span class="rl-req" title="' + esc(t('addrow.required')) + '" aria-hidden="true">*</span>') + '</span>' +
+        '<input class="rl-field-input" name="c' + i + '" autocomplete="off"' + (h.optional ? '' : ' aria-required="true"') + (h.name === 'Fecha' ? ' placeholder="2026-10-26"' : '') + '></label>').join('');
+    }
+    /* Form fields panel: one switch per header, edited as a draft until Save. */
+    function renderHeaders() {
+      const n = draft.filter((h) => h.optional).length;
+      $('[data-rl=hdr-summary]').textContent = t('headers.summary', { n, total: draft.length });
+      $('[data-rl=hdr-reset]').disabled = !n;
+      $('[data-rl=hdr-list]').innerHTML = draft.map((h, i) => {
+        const ex = (rows.find((r) => r[i]) || [])[i];
+        return '<li><button type="button" role="switch" class="rl-hdr" data-hdr="' + i + '" aria-checked="' + h.optional + '">' +
+          '<span class="rl-hdr-name"><b>' + esc(h.name) + '</b>' + (ex ? '<small>' + esc(t('headers.example', { v: ex })) + '</small>' : '') + '</span>' +
+          '<span class="rl-hdr-state">' + esc(t(h.optional ? 'headers.optional' : 'headers.required')) + '</span><span class="rl-knob" aria-hidden="true"></span></button></li>';
+      }).join('');
+    }
+    renderFields();
 
     function update() {
       const list = query(), pages = Math.max(1, Math.ceil(list.length / T.size));
@@ -357,12 +403,23 @@
       else if (b.dataset.page) T.page += +b.dataset.page;
       else if (b.dataset.rl === 'clear') { T.terms = []; T.filters = []; T.page = 1; }
       else if (b.dataset.rl === 'toggle-filters') { T.showFilters = !T.showFilters; $('[data-rl=filter-form]').hidden = !T.showFilters; b.setAttribute('aria-expanded', T.showFilters); return; }
-      else if (b.dataset.rl === 'add-row') { $('[data-rl=row-error]').hidden = true; dlg.showModal(); dlg.querySelector('input').focus(); return; }
+      else if (b.dataset.rl === 'add-row') { $('[data-rl=row-error]').hidden = true; dlg.querySelectorAll('[aria-invalid]').forEach((i) => i.removeAttribute('aria-invalid')); dlg.showModal(); dlg.querySelector('input').focus(); return; }
       else if (b.dataset.rl === 'close-dialog') { dlg.close(); return; }
+      else if (b.dataset.rl === 'open-headers') { draft = data.headerConfig.map((h) => Object.assign({}, h)); renderHeaders(); hdlg.showModal(); return; }
+      else if (b.dataset.rl === 'close-hdr') { hdlg.close(); return; }
+      else if (b.dataset.rl === 'hdr-reset') { draft.forEach((h) => (h.optional = false)); renderHeaders(); return; }
+      else if (b.dataset.hdr != null) { const h = draft[+b.dataset.hdr]; h.optional = !h.optional; renderHeaders(); $('[data-hdr="' + b.dataset.hdr + '"]').focus(); return; }
       else return;
       update();
     });
     dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+    hdlg.addEventListener('click', (e) => { if (e.target === hdlg) hdlg.close(); });
+    dlg.addEventListener('input', (e) => e.target.removeAttribute('aria-invalid'));
+    $('[data-rl=hdr-form]').addEventListener('submit', (e) => {
+      e.preventDefault();
+      data.headerConfig.forEach((h, i) => (h.optional = draft[i].optional)); // PUT /sheets/:id/headers
+      renderFields(); hdlg.close(); toast(t('headers.saved'));
+    });
     $('[data-rl=filter-form]').addEventListener('submit', (e) => {
       e.preventDefault(); const f = new FormData(e.target), op = f.get('op'), value = String(f.get('value') || '').trim();
       if (!value && op !== 'isEmpty') return;
@@ -371,7 +428,14 @@
     $('[data-rl=filter-form]').elements.op.addEventListener('change', (e) => { e.target.form.elements.value.disabled = e.target.value === 'isEmpty'; });
     $('[data-rl=row-form]').addEventListener('submit', (e) => {
       e.preventDefault(); const f = new FormData(e.target), cells = headers.map((_, i) => String(f.get('c' + i) || '').trim());
-      if (!cells.some(Boolean)) { $('[data-rl=row-error]').hidden = false; return; }
+      const missing = data.headerConfig.map((h, i) => (!h.optional && !cells[i] ? i : -1)).filter((i) => i >= 0);
+      const err = $('[data-rl=row-error]');
+      if (missing.length || !cells.some(Boolean)) {
+        err.textContent = missing.length ? t('addrow.error', { cols: missing.map((i) => headers[i]).join(', ') }) : t('addrow.errorEmpty'); err.hidden = false;
+        const inputs = missing.map((i) => e.target.elements['c' + i]);
+        inputs.forEach((el) => el.setAttribute('aria-invalid', 'true')); if (inputs[0]) inputs[0].focus();
+        return;
+      }
       rows.push(cells); data.sheets[0].rowCount = rows.length; T.sort = null; T.page = Math.ceil(query().length / T.size) || 1; T.flash = rows.length + 1;
       e.target.reset(); dlg.close(); update(); toast(t('addrow.done', { sheet: data.sheetName }));
       pushEvent({ source: 'platform', action: 'added', actor: data.me.email, row: rows.length + 1, new: cells.filter(Boolean).slice(0, 2).join(', ') });

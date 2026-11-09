@@ -9,6 +9,7 @@ const PATHS = {
   refresh: <path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4" />,
   x: <path d="m6 6 12 12M18 6 6 18" />,
   check: <path d="m5 13 4 4L19 7" />,
+  plus: <path d="M12 5v14M5 12h14" />,
 }
 
 export function Icon({ name, size = 18 }: { name: keyof typeof PATHS; size?: number }) {
