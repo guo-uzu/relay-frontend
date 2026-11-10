@@ -38,7 +38,7 @@ export type TableSearch = {
   page: number
 }
 
-export type RowsResult = { headers: string[]; rows: { n: number; cells: string[] }[]; total: number; sheetName: string }
+export type RowsResult = { headers: HeaderConfig[]; rows: { n: number; cells: string[] }[]; total: number; sheetName: string }
 
 export type HeaderConfig = { name: string; optional: boolean }
 

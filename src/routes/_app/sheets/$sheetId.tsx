@@ -10,6 +10,7 @@ import { Icon } from '../../../components/Icon'
 import { fold, num, toastError } from '../../../lib'
 import { headersQuery, PAGE_SIZE, rowsQuery } from '../../../queries'
 import { OPS, type Op, type Rule, type TableSearch } from '../../../types'
+import { type HeaderConfig } from "../../../types"
 
 const isRule = (r: unknown): r is Rule => {
   const x = r as Rule
@@ -43,12 +44,10 @@ function Seg<T extends string>({ value, items, onChange }: { value: T; items: [T
   )
 }
 
-function AddRow({ headers, sheetName, orgId, sheetId }: { headers: string[]; sheetName: string; orgId: string; sheetId: string }) {
+function AddRow({ headers, sheetName, orgId, sheetId }: { headers: HeaderConfig[]; sheetName: string; orgId: string; sheetId: string }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const dlg = useRef<HTMLDialogElement>(null)
-  const { data: config } = useSuspenseQuery(headersQuery(orgId, sheetId))
-  const optional = headers.map((h) => config.find((c) => c.name === h)?.optional ?? false) // by name, so a changed header list cannot misalign
   const [err, setErr] = useState<{ msg: string; missing: number[] } | null>(null)
   const append = useMutation({
     mutationFn: (cells: string[]) => api(`/google-sheets/${orgId}/sheets/${sheetId}/rows/append`, { cells }),
@@ -72,9 +71,9 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: string[]; she
             const form = e.currentTarget
             const f = new FormData(form)
             const cells = headers.map((_, i) => String(f.get(`c${i}`) ?? '').trim())
-            const missing = cells.flatMap((c, i) => (!optional[i] && !c ? [i] : []))
+            const missing = headers.flatMap((h, i) => (!h.optional && !cells[i] ? [i] : []))
             if (missing.length) {
-              setErr({ msg: t('addrow.error', { cols: missing.map((i) => headers[i]).join(', ') }), missing })
+              setErr({ msg: t('addrow.error', { cols: headers.filter((_, i) => missing.includes(i)).map((h) => h.name).join(', ') }), missing })
               return (form.elements.namedItem(`c${missing[0]}`) as HTMLInputElement).focus()
             }
             if (!cells.some(Boolean)) return setErr({ msg: t('addrow.errorEmpty'), missing: [] })
@@ -85,11 +84,11 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: string[]; she
           <header><h2 id="addrow-title">{t('addrow.title', { sheet: sheetName })}</h2><p>{t('addrow.hint')}</p></header>
           <div className="rl-fields">
             {headers.map((h, i) => (
-              <label key={h + i}>
-                <span className="rl-lbl">{h}{optional[i] ? <span className="rl-opt">{t('headers.optional')}</span> : <span className="rl-req" title={t('addrow.required')} aria-hidden>*</span>}</span>
+              <label key={h.name + i}>
+                <span className="rl-lbl">{h.name}{h.optional ? <span className="rl-opt">{t('headers.optional')}</span> : <span className="rl-req" title={t('addrow.required')} aria-hidden>*</span>}</span>
                 <input
                   className="rl-field-input" name={`c${i}`} autoComplete="off"
-                  aria-required={!optional[i]} aria-invalid={err?.missing.includes(i) ?? false}
+                  aria-required={!h.optional} aria-invalid={err?.missing.includes(i) ?? false}
                   onChange={() => setErr((e) => e && { ...e, missing: e.missing.filter((x) => x !== i) })}
                 />
               </label>
@@ -173,7 +172,7 @@ function DataTable() {
         <AddRow headers={headers} sheetName={sheetName} orgId={orgId} sheetId={sheetId} />
       </div>
 
-      {showFilters && <Filters headers={headers} search={search} set={set} />}
+      {showFilters && <Filters headers={headers } search={search} set={set} />}
 
       <div className="rl-tablewrap">
         {total === 0 ? (
@@ -187,11 +186,11 @@ function DataTable() {
               <tr>
                 <th scope="col" className="rl-rn">#</th>
                 {headers.map((h) => {
-                  const on = search.sort === h
+                  const on = search.sort === h.name
                   return (
-                    <th scope="col" key={h} aria-sort={on ? (search.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
-                      <button type="button" className="rl-th" onClick={() => set(!on ? { sort: h, dir: 'asc' } : search.dir === 'asc' ? { sort: h, dir: 'desc' } : { sort: undefined, dir: 'asc' })}>
-                        {h}<span className="rl-sort" aria-hidden="true">{on ? (search.dir === 'asc' ? '▲' : '▼') : ''}</span>
+                    <th scope="col" key={h.name} aria-sort={on ? (search.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+                      <button type="button" className="rl-th" onClick={() => set(!on ? { sort: h.name, dir: 'asc' } : search.dir === 'asc' ? { sort: h.name, dir: 'desc' } : { sort: undefined, dir: 'asc' })}>
+                        {h.name}<span className="rl-sort" aria-hidden="true">{on ? (search.dir === 'asc' ? '▲' : '▼') : ''}</span>
                       </button>
                     </th>
                   )
@@ -221,7 +220,7 @@ function DataTable() {
   )
 }
 
-function Filters({ headers, search, set }: { headers: string[]; search: TableSearch; set: (p: Partial<TableSearch>) => void }) {
+function Filters({ headers, search, set }: { headers: HeaderConfig[]; search: TableSearch; set: (p: Partial<TableSearch>) => void }) {
   const { t } = useTranslation()
   const [op, setOp] = useState<Op>('contains')
   return (
@@ -237,7 +236,7 @@ function Filters({ headers, search, set }: { headers: string[]; search: TableSea
         setOp('contains')
       }}
     >
-      <label>{t('table.column')}<select className="rl-select" name="column">{headers.map((h) => <option key={h}>{h}</option>)}</select></label>
+      <label>{t('table.column')}<select className="rl-select" name="column">{headers.map((h) => <option key={h.name}>{h.name}</option>)}</select></label>
       <label>
         {t('table.operator')}
         <select className="rl-select" value={op} onChange={(e) => setOp(e.target.value as Op)}>{OPS.map((o) => <option key={o} value={o}>{t(`op.${o}`)}</option>)}</select>
