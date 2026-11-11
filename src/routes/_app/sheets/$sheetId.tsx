@@ -71,7 +71,7 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: HeaderConfig[
             const form = e.currentTarget
             const f = new FormData(form)
             const cells = headers.map((_, i) => String(f.get(`c${i}`) ?? '').trim())
-            const missing = headers.flatMap((h, i) => (!h.optional && !cells[i] ? [i] : []))
+            const missing = headers.flatMap((h, i) => (h.obligatory && !cells[i] ? [i] : []))
             if (missing.length) {
               setErr({ msg: t('addrow.error', { cols: headers.filter((_, i) => missing.includes(i)).map((h) => h.name).join(', ') }), missing })
               return (form.elements.namedItem(`c${missing[0]}`) as HTMLInputElement).focus()
@@ -82,19 +82,21 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: HeaderConfig[
           }}
         >
           <header><h2 id="addrow-title">{t('addrow.title', { sheet: sheetName })}</h2><p>{t('addrow.hint')}</p></header>
+          <div className="rl-dlg-body">
           <div className="rl-fields">
             {headers.map((h, i) => (
               <label key={h.name + i}>
-                <span className="rl-lbl">{h.name}{h.optional ? <span className="rl-opt">{t('headers.optional')}</span> : <span className="rl-req" title={t('addrow.required')} aria-hidden>*</span>}</span>
+                <span className="rl-lbl">{h.name}{h.obligatory && <span className="rl-req">{t('headers.required')}</span>}</span>
                 <input
                   className="rl-field-input" name={`c${i}`} autoComplete="off"
-                  aria-required={!h.optional} aria-invalid={err?.missing.includes(i) ?? false}
+                  aria-required={h.obligatory} aria-invalid={err?.missing.includes(i) ?? false}
                   onChange={() => setErr((e) => e && { ...e, missing: e.missing.filter((x) => x !== i) })}
                 />
               </label>
             ))}
           </div>
           {err && <p className="rl-error" role="alert">{err.msg}</p>}
+          </div>
           <footer>
             <button type="button" className="rl-btn" onClick={() => dlg.current?.close()}>{t('addrow.cancel')}</button>
             <button className="rl-btn rl-btn-primary" type="submit" disabled={append.isPending}>{t('addrow.submit')}</button>
@@ -105,7 +107,7 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: HeaderConfig[
   )
 }
 
-function FormFields({ orgId, sheetId }: { orgId: string; sheetId: string }) {
+function FormFields({ orgId, sheetId, examples }: { orgId: string; sheetId: string; examples: (string | undefined)[] }) {
   const { t } = useTranslation()
   const dlg = useRef<HTMLDialogElement>(null)
   return (
@@ -114,7 +116,7 @@ function FormFields({ orgId, sheetId }: { orgId: string; sheetId: string }) {
         <Icon name="sliders" size={16} /><span>{t('headers.button')}</span>
       </button>
       <dialog className="rl-dialog" ref={dlg} aria-label={t('headers.button')} onClick={(e) => e.target === dlg.current && dlg.current.close()}>
-        <HeadersForm orgId={orgId} sheetId={sheetId} onDone={() => dlg.current?.close()} />
+        <HeadersForm orgId={orgId} sheetId={sheetId} examples={examples} onDone={() => dlg.current?.close()} />
       </dialog>
     </>
   )
@@ -168,7 +170,7 @@ function DataTable() {
         <button type="button" className="rl-btn" aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}>
           <Icon name="filter" size={16} /><span>{t('table.filters')}</span><b className="rl-count">{search.filters.length || ''}</b>
         </button>
-        <FormFields orgId={orgId} sheetId={sheetId} />
+        <FormFields orgId={orgId} sheetId={sheetId} examples={headers.map((_, i) => rows.find((r) => r.cells[i])?.cells[i])} />
         <AddRow headers={headers} sheetName={sheetName} orgId={orgId} sheetId={sheetId} />
       </div>
 

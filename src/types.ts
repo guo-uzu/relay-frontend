@@ -40,7 +40,7 @@ export type TableSearch = {
 
 export type RowsResult = { headers: HeaderConfig[]; rows: { n: number; cells: string[] }[]; total: number; sheetName: string }
 
-export type HeaderConfig = { name: string; optional: boolean }
+export type HeaderConfig = { name: string; obligatory: boolean }
 
 export type Role = 'owner' | 'admin' | 'member'
 export type Org = {

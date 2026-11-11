@@ -65,23 +65,26 @@ h1, h2, h3, p { margin: 0; }
 .rl-pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; color: var(--ink-soft); font-size: .93em; }
 .rl-pager-btns { display: inline-flex; gap: 8px; }
 
-/* dialog (modal by default, side drawer with .rl-dialog { padding: 0; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--panel); color: var(--ink); width: min(540px, calc(100vw - 24px)); box-shadow: var(--shadow-pop, 0 24px 60px rgb(0 0 0 / .22)); opacity: 0; transform: var(--dialog-from, scale(.97)); transition: opacity var(--dur-m, 200ms) var(--ease), transform var(--dur-m, 200ms) var(--ease-dialog, var(--ease)), overlay var(--dur-m, 200ms) allow-discrete, display var(--dur-m, 200ms) allow-discrete; }
+/* dialog */
+.rl-dialog { padding: 0; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--panel); color: var(--ink); width: min(540px, calc(100vw - 24px)); box-shadow: var(--shadow-pop, 0 24px 60px rgb(0 0 0 / .22)); opacity: 0; transform: var(--dialog-from, scale(.97)); transition: opacity var(--dur-m, 200ms) var(--ease), transform var(--dur-m, 200ms) var(--ease-dialog, var(--ease)), overlay var(--dur-m, 200ms) allow-discrete, display var(--dur-m, 200ms) allow-discrete; }
 .rl-dialog[open] { opacity: 1; transform: none; }
 @starting-style { .rl-dialog[open] { opacity: 0; transform: var(--dialog-from, scale(.97)); } }
 .rl-dialog::backdrop { background: var(--scrim, rgb(10 15 12 / .4)); opacity: 0; transition: opacity var(--dur-m, 200ms) var(--ease), overlay var(--dur-m, 200ms) allow-discrete, display var(--dur-m, 200ms) allow-discrete; }
 .rl-dialog[open]::backdrop { opacity: 1; }
 @starting-style { .rl-dialog[open]::backdrop { opacity: 0; } }
-.rl-dialog form { display: grid; gap: 16px; padding: 22px; }
-.rl-dialog h2 { font: var(--h2, 600 19px/1.25 var(--font-display, var(--font))); letter-spacing: var(--h2-ls, 0); }
-.rl-dialog header p { margin-top: 6px; color: var(--ink-soft); font-size: .93em; max-width: 52ch; }
-.rl-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rl-dialog form { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; max-height: min(88dvh, 780px); padding: 0; }
+.rl-dialog form > header { padding: 24px 24px 16px; }
+.rl-dialog h2 { font: var(--h2, 600 19px/1.25 var(--font-display, var(--font))); letter-spacing: var(--h2-ls, 0); text-wrap: balance; }
+.rl-dialog header p { margin-top: 6px; color: var(--ink-soft); font-size: .93em; max-width: 52ch; text-wrap: pretty; }
+.rl-dlg-body { display: grid; align-content: start; gap: 14px; overflow-y: auto; overscroll-behavior: contain; padding: 4px 24px 20px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.rl-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
 .rl-fields .rl-field-input { width: 100%; }
 .rl-error { color: var(--bad); font-size: .93em; font-weight: 500; }
-.rl-lbl { display: flex; align-items: baseline; gap: 3px; }
-.rl-req { color: var(--bad, #B3342B); font-weight: 700; }
-.rl-opt { margin-left: auto; font-weight: 400; font-size: .92em; color: var(--ink-faint, var(--ink-soft)); }
+.rl-lbl { display: flex; align-items: baseline; gap: 3px; min-width: 0; }
+.rl-req { margin-left: auto; padding-left: 8px; font-size: .92em; font-weight: 600; color: var(--bad, #B3342B); }
 .rl-field-input[aria-invalid=true] { border-color: var(--bad, #B3342B); outline-color: var(--bad, #B3342B); }
-.rl-dialog footer { display: flex; justify-content: flex-end; gap: 8px; }
+.rl-dialog footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px 22px; }
+@media (max-width: 480px) { .rl-dialog form > header { padding: 20px 18px 12px; } .rl-dlg-body { padding: 4px 18px 16px; } .rl-dialog footer { padding: 12px 18px; } .rl-dialog footer .rl-btn { flex: 1; justify-content: center; } }
 
 .rl-hdr-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--ink-soft); font-size: .93em; font-weight: 500; }
 .rl-link { padding: 2px 0; border: 0; background: none; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
@@ -92,6 +95,8 @@ h1, h2, h3, p { margin: 0; }
 @media (hover: hover) { .rl-hdr:hover { border-color: var(--line-strong); background: var(--hover); } }
 .rl-hdr[aria-checked=true] { border-color: var(--accent); background: var(--accent-wash); }
 .rl-hdr-name { display: grid; gap: 1px; min-width: 0; }
+.rl-hdr-name b { font-weight: 600; }
+.rl-hdr-name small { color: var(--ink-soft); font-size: .86em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rl-hdr-state { font-size: .86em; font-weight: 600; color: var(--ink-soft); }
 .rl-hdr[aria-checked=true] .rl-hdr-state { color: var(--accent); }
 .rl-knob { position: relative; width: 36px; height: 20px; border-radius: 99px; background: var(--line-strong); transition: background-color 140ms var(--ease); }
@@ -130,7 +135,7 @@ h1, h2, h3, p { margin: 0; }
 .rl-seg { border-radius: 12px; border-color: transparent; background: #DCE3EC; }
 .rl-seg button { border-radius: 9px; }
 .rl-seg button[aria-pressed=true] { box-shadow: 0 1px 3px rgb(15 27 45 / .18); }
-.rl-dialog { border-radius: 24px; border: 0; }
+.rl-dialog { border-radius: 24px; border: 0; overflow: hidden; }
 .rl-filters { border-radius: 16px; background: var(--panel); border-color: var(--line); }
 .rl-pager { padding: 0 6px; }
 
