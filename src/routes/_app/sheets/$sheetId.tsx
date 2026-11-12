@@ -7,7 +7,7 @@ import { api } from '../../../api'
 import { Highlight } from '../../../components/bits'
 import { HeadersForm } from '../../../components/HeadersForm'
 import { Icon } from '../../../components/Icon'
-import { fold, num, toastError } from '../../../lib'
+import { fold, ID_HEADER, num, toastError } from '../../../lib'
 import { headersQuery, PAGE_SIZE, rowsQuery } from '../../../queries'
 import { OPS, type Op, type Rule, type TableSearch } from '../../../types'
 import { type HeaderConfig } from "../../../types"
@@ -71,7 +71,7 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: HeaderConfig[
             const form = e.currentTarget
             const f = new FormData(form)
             const cells = headers.map((_, i) => String(f.get(`c${i}`) ?? '').trim())
-            const missing = headers.flatMap((h, i) => (h.obligatory && !cells[i] ? [i] : []))
+            const missing = headers.flatMap((h, i) => (h.obligatory && h.name !== ID_HEADER && !cells[i] ? [i] : []))
             if (missing.length) {
               setErr({ msg: t('addrow.error', { cols: headers.filter((_, i) => missing.includes(i)).map((h) => h.name).join(', ') }), missing })
               return (form.elements.namedItem(`c${missing[0]}`) as HTMLInputElement).focus()
@@ -84,7 +84,7 @@ function AddRow({ headers, sheetName, orgId, sheetId }: { headers: HeaderConfig[
           <header><h2 id="addrow-title">{t('addrow.title', { sheet: sheetName })}</h2><p>{t('addrow.hint')}</p></header>
           <div className="rl-dlg-body">
           <div className="rl-fields">
-            {headers.map((h, i) => (
+            {headers.map((h, i) => h.name === ID_HEADER ? null : (
               <label key={h.name + i}>
                 <span className="rl-lbl">{h.name}{h.obligatory && <span className="rl-req">{t('headers.required')}</span>}</span>
                 <input

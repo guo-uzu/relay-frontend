@@ -24,4 +24,6 @@ export function errorText(e: unknown) {
 export const toastError = (e: unknown) => toast.error(errorText(e))
 
 // Accent- and case-insensitive; the backend must fold the same way or matches are found but not highlighted.
+// Internal row key the backend requires in every sheet; never shown in forms. Cells match headers by position, so hide it, never drop it.
+export const ID_HEADER = '_id'
 export const fold = (s: string) => [...s].map((c) => [...c.normalize('NFD')][0]!).join('').toLowerCase()

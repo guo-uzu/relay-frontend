@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '../api'
 import { useSaveHeaders } from '../mutations'
 import { headersQuery } from '../queries'
-import { toastError } from '../lib'
+import { ID_HEADER, toastError } from '../lib'
 import type { HeaderConfig } from '../types'
 
 export function HeadersForm({ orgId, sheetId, examples, onDone }: { orgId: string; sheetId: string; examples: (string | undefined)[]; onDone: () => void }) {
@@ -43,18 +43,19 @@ export function HeadersForm({ orgId, sheetId, examples, onDone }: { orgId: strin
     toggle.mutate(h)
   }
 
-  const n = draft.filter((h) => h.obligatory).length
+  const shown = draft.filter((h) => h.name !== ID_HEADER)
+  const n = shown.filter((h) => h.obligatory).length
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); save.mutate(draft, { onSuccess: () => onDone() }) }}>
       <header><h2>{t('headers.title')}</h2><p>{t('headers.hint')}</p></header>
       <div className="rl-dlg-body">
         <div className="rl-hdr-bar">
-          <span aria-live="polite">{t('headers.summary', { n, total: draft.length })}</span>
-          <button type="button" className="rl-link" disabled={n === draft.length} onClick={handleToggleAllElements}>{t('headers.reset')}</button>
+          <span aria-live="polite">{t('headers.summary', { n, total: shown.length })}</span>
+          <button type="button" className="rl-link" disabled={n === shown.length} onClick={handleToggleAllElements}>{t('headers.reset')}</button>
         </div>
         <ul className="rl-hdrs">
-          {draft.map((h, i) => (
+          {draft.map((h, i) => h.name === ID_HEADER ? null : (
             <li key={h.name + i}>
               <button
                 type="button"
