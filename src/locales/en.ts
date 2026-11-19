@@ -28,7 +28,7 @@ export const en = {
   'table.addFilter': 'Add filter', 'table.column': 'Column', 'table.operator': 'Operator', 'table.value': 'Value',
   'table.rulesAll': 'All rules', 'table.rulesAny': 'Any rule', 'table.addRow': 'Add row', 'table.range': '{{from}}–{{to}} of {{n}}',
   'table.empty': 'No rows match these terms.', 'table.clear': 'Clear search and filters', 'table.prev': 'Previous', 'table.next': 'Next',
-  'table.removeTerm': 'Remove {{term}}', 'table.removeRule': 'Remove filter', 'table.searchLabel': 'Search terms',
+  'table.removeTerm': 'Remove {{term}}', 'table.removeRule': 'Remove filter', 'table.searchLabel': 'Search terms', 'table.columns': 'Columns', 'table.columnsHint': 'Hidden columns stay hidden in this browser only.', 'table.showAll': 'Show all', 'table.columnsSummary': '{{n}} of {{total}} visible', 'table.visible': 'Visible', 'table.hidden': 'Hidden',
   'op.contains': 'contains', 'op.equals': 'is', 'op.startsWith': 'starts with', 'op.gt': 'greater than', 'op.lt': 'less than', 'op.isEmpty': 'is empty',
   'addrow.title': 'Add a row to {{sheet}}', 'addrow.hint': 'Fill in every required column. Optional ones can stay empty. The row is added to the end of the Google Sheet.',
   'addrow.submit': 'Add row', 'addrow.cancel': 'Cancel', 'addrow.error': 'Fill in the required columns: {{cols}}.', 'addrow.done': 'Row added to {{sheet}}',

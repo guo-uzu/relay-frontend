@@ -33,8 +33,36 @@ export const Route = createFileRoute('/_app/sheets/$sheetId')({
     context.queryClient.ensureQueryData(rowsQuery(context.orgId, params.sheetId, deps)),
     context.queryClient.ensureQueryData(headersQuery(context.orgId, params.sheetId)), // so HeadersForm does not suspend the page
   ]),
-  component: DataTable,
+  component: SheetPage,
 })
+
+// Hidden columns are remembered per sheet in this browser. Storage can be blocked
+// (private mode, disabled site data), so every access is wrapped and the table still works without it.
+const hiddenKey = (sheetId: string) => `rl:hidden-columns:${sheetId}`
+
+function readHidden(sheetId: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(hiddenKey(sheetId)) ?? '[]')
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeHidden(sheetId: string, names: string[]) {
+  try {
+    localStorage.setItem(hiddenKey(sheetId), JSON.stringify(names))
+  } catch {
+    // not remembered; the change still applies for this visit
+  }
+}
+
+// key={sheetId} remounts the table when the URL changes to another sheet, so its
+// useState initializer reads that sheet's saved columns again.
+function SheetPage() {
+  const { sheetId } = Route.useParams()
+  return <DataTable key={sheetId} />
+}
 
 function Seg<T extends string>({ value, items, onChange }: { value: T; items: [T, string][]; onChange: (v: T) => void }) {
   return (
@@ -133,6 +161,17 @@ function DataTable() {
   const set = (patch: Partial<TableSearch>) => void navigate({ search: (p) => ({ ...p, page: 1, ...patch }) })
 
   const { headers, rows, total, sheetName } = data
+
+  const columnsDlg = useRef<HTMLDialogElement>(null)
+  const [hidden, setHidden] = useState<string[]>(() => readHidden(sheetId))
+  const hiddenSet = new Set(hidden)
+  // keeps each visible header with its index: the index is the position in each row's cells
+  const shown = headers.flatMap((h, i) => (hiddenSet.has(h.name) ? [] : [{ h, i }]))
+  const toggleColumn = (name: string) => {
+    const next = hiddenSet.has(name) ? hidden.filter((x) => x !== name) : [...hidden, name]
+    setHidden(next)
+    writeHidden(sheetId, next)
+  }
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const addTerm = (v: string) => {
     v = v.trim().replace(/,$/, '')
@@ -171,6 +210,36 @@ function DataTable() {
           <Icon name="filter" size={16} /><span>{t('table.filters')}</span><b className="rl-count">{search.filters.length || ''}</b>
         </button>
         <FormFields orgId={orgId} sheetId={sheetId} examples={headers.map((_, i) => rows.find((r) => r.cells[i])?.cells[i])} />
+        <button type="button" className="rl-btn" onClick={() => columnsDlg.current?.showModal()}>
+          <Icon name="columns" size={16} /><span>{t('table.columns')}</span><b className="rl-count">{hidden.length || ''}</b>
+        </button>
+        <dialog className="rl-dialog" ref={columnsDlg} aria-label={t('table.columns')} onClick={(e) => e.target === columnsDlg.current && columnsDlg.current.close()}>
+          <form method="dialog">
+          <header><h2>{t('table.columns')}</h2><p>{t('table.columnsHint')}</p></header>
+          <div className="rl-dlg-body">
+            <div className="rl-hdr-bar">
+              <span aria-live="polite">{t('table.columnsSummary', { n: shown.length, total: headers.length })}</span>
+              <button type="button" className="rl-link" disabled={hidden.length === 0} onClick={() => { setHidden([]); writeHidden(sheetId, []) }}>{t('table.showAll')}</button>
+            </div>
+            <ul className="rl-hdrs">
+              {headers.map((h, i) => {
+                const isHidden = hiddenSet.has(h.name)
+                // at least one column must stay visible, otherwise the table has nothing to show
+                const isLastVisible = !isHidden && shown.length === 1
+                return (
+                  <li key={h.name + i}>
+                    <button type="button" role="switch" aria-checked={!isHidden} disabled={isLastVisible} className="rl-hdr" onClick={() => toggleColumn(h.name)}>
+                      <span className="rl-hdr-name"><b>{h.name}</b></span>
+                      <span className="rl-hdr-state">{t(isHidden ? 'table.hidden' : 'table.visible')}</span>
+                      <span className="rl-knob" aria-hidden />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+          </form>
+        </dialog>
         <AddRow headers={headers} sheetName={sheetName} orgId={orgId} sheetId={sheetId} />
       </div>
 
@@ -187,7 +256,7 @@ function DataTable() {
             <thead>
               <tr>
                 <th scope="col" className="rl-rn">#</th>
-                {headers.map((h) => {
+                {shown.map(({ h }) => {
                   const on = search.sort === h.name
                   return (
                     <th scope="col" key={h.name} aria-sort={on ? (search.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
@@ -203,7 +272,7 @@ function DataTable() {
               {rows.map(({ n, cells }) => (
                 <tr key={n}>
                   <td className="rl-rn">{n}</td>
-                  {cells.map((c, i) => <td key={i}><Highlight text={c} terms={search.terms} /></td>)}
+                  {shown.map(({ i }) => <td key={i}><Highlight text={cells[i] ?? ''} terms={search.terms} /></td>)}
                 </tr>
               ))}
             </tbody>
