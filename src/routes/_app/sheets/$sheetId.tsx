@@ -167,6 +167,12 @@ function DataTable() {
   const hiddenSet = new Set(hidden)
   // keeps each visible header with its index: the index is the position in each row's cells
   const shown = headers.flatMap((h, i) => (hiddenSet.has(h.name) ? [] : [{ h, i }]))
+  // long-text columns may wrap; short ones stay on one line so they keep a readable width
+  const wrapCols = new Set(
+    shown
+      .filter(({ i }) => rows.some((r) => (r.cells[i]?.length ?? 0) > 35))
+      .map(({ i }) => i),
+  )
   const toggleColumn = (name: string) => {
     const next = hiddenSet.has(name) ? hidden.filter((x) => x !== name) : [...hidden, name]
     setHidden(next)
@@ -272,7 +278,7 @@ function DataTable() {
               {rows.map(({ n, cells }) => (
                 <tr key={n}>
                   <td className="rl-rn">{n}</td>
-                  {shown.map(({ i }) => <td key={i}><Highlight text={cells[i] ?? ''} terms={search.terms} /></td>)}
+                  {shown.map(({ i }) => <td key={i}><div className={wrapCols.has(i) ? 'rl-wrap-text' : undefined}><Highlight text={cells[i] ?? ''} terms={search.terms} /></div></td>)}
                 </tr>
               ))}
             </tbody>
