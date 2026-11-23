@@ -1,6 +1,7 @@
 import { Link, Outlet, createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { api } from '../api'
 import { Icon } from '../components/Icon'
 import { Avatar, LangToggle } from '../components/bits'
@@ -33,11 +34,21 @@ function Shell() {
     },
   })
 
+  // The ID is already in the route context, so no extra request is needed.
+  const copyOrgId = async () => {
+    try {
+      await navigator.clipboard.writeText(orgId)
+      toast.success(t('org.copied'))
+    } catch {
+      toast.error(t('org.copyFailed'))
+    }
+  }
+
   return (
     <div className="app">
       <aside className="side">
         <div className="brand"><span className="logo"><Icon name="bolt" /></span>Relay</div>
-        <div className="orgcard"><b>{org.name}</b><span>{t(`team.${role}`)}</span></div>
+        <button type="button" className="orgcard" title={t('org.copyId')} onClick={copyOrgId}><b>{org.name}</b><span>{t(`team.${role}`)}</span></button>
         <nav className="nav" aria-label="Main">
           <Link to="/dashboard"><Icon name="dashboard" size={19} />{t('nav.dashboard')}</Link>
           <Link to="/sheets"><Icon name="table" size={19} />{t('nav.data')}</Link>
