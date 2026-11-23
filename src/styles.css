@@ -144,7 +144,7 @@ h1, h2, h3, p { margin: 0; }
 .side { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 22px; padding: 22px 16px; background: var(--panel); border-right: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; font: 700 21px/1 var(--font-display); letter-spacing: -.02em; }
 .brand .logo { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--accent); color: #fff; }
-.orgcard { padding: 12px 14px; border-radius: 14px; background: var(--panel-2); }
+.orgcard { display: block; width: 100%; padding: 12px 14px; border: 0; border-radius: 14px; background: var(--panel-2); color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .orgcard b { display: block; font-weight: 600; }
 .orgcard span { color: var(--ink-soft); font-size: 13px; }
 .nav { display: grid; gap: 4px; }
