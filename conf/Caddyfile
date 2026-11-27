@@ -1,0 +1,19 @@
+{
+	auto_https off
+}
+
+:80 {
+	root * /usr/share/caddy
+	encode zstd gzip
+
+	# SPA fallback: serve index.html for unknown routes
+	try_files {path} /index.html
+	file_server
+
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+}
+
+:3000 {
+  reverse_proxy :3000
+}
